@@ -1,0 +1,108 @@
+# name: test/sql/convert.test
+# group: [vgi_units]
+#
+# Scalar conversion: convert(value, from, to), to_base(value, unit). Known
+# constants are asserted with ROUND() for determinism. Unknown units flow to
+# NULL; incompatible dimensions raise an error.
+
+require-env VGI_UNITS_WORKER
+
+statement ok
+LOAD vgi;
+
+statement ok
+ATTACH 'units' AS units (TYPE vgi, LOCATION '${VGI_UNITS_WORKER}');
+
+statement ok
+SET search_path = 'units.main';
+
+# 1 mi = 1.609344 km exactly.
+query R
+SELECT ROUND(convert(1, 'mi', 'km'), 6);
+----
+1.609344
+
+# 5 mi = 8.04672 km.
+query R
+SELECT ROUND(convert(5, 'mi', 'km'), 5);
+----
+8.04672
+
+# Temperature: 0 C = 32 F = 273.15 K.
+query R
+SELECT ROUND(convert(0, 'C', 'F'), 6);
+----
+32.0
+
+query R
+SELECT ROUND(convert(0, 'C', 'K'), 6);
+----
+273.15
+
+query R
+SELECT ROUND(convert(100, 'C', 'F'), 6);
+----
+212.0
+
+# 1 kg = 2.2046226 lb.
+query R
+SELECT ROUND(convert(1, 'kg', 'lb'), 7);
+----
+2.2046226
+
+# 1 hour = 3600 s.
+query R
+SELECT ROUND(convert(1, 'hour', 's'), 1);
+----
+3600.0
+
+# 1 GiB = 1073741824 byte.
+query R
+SELECT ROUND(convert(1, 'GiB', 'byte'), 1);
+----
+1073741824.0
+
+# 1 atm = 101325 Pa.
+query R
+SELECT ROUND(convert(1, 'atm', 'Pa'), 1);
+----
+101325.0
+
+# to_base: value in the SI base unit of its dimension.
+query R
+SELECT ROUND(to_base(1, 'km'), 1);
+----
+1000.0
+
+query R
+SELECT ROUND(to_base(0, 'C'), 2);
+----
+273.15
+
+# Unknown unit → NULL (not an error).
+query R
+SELECT convert(1, 'frobnicate', 'm');
+----
+NULL
+
+query R
+SELECT to_base(1, 'frobnicate');
+----
+NULL
+
+# NULL input → NULL.
+query R
+SELECT convert(NULL, 'mi', 'km');
+----
+NULL
+
+# Incompatible dimensions (length → mass) → error.
+statement error
+SELECT convert(1, 'km', 'kg');
+----
+
+statement ok
+USE memory;
+
+statement ok
+DETACH units;

@@ -1,0 +1,99 @@
+# name: test/sql/analysis.test
+# group: [vgi_units]
+#
+# Dimensional analysis: dimension(unit), compatible(a, b), parse_quantity(text),
+# and the supported_units() discovery table.
+
+require-env VGI_UNITS_WORKER
+
+statement ok
+LOAD vgi;
+
+statement ok
+ATTACH 'units' AS units (TYPE vgi, LOCATION '${VGI_UNITS_WORKER}');
+
+statement ok
+SET search_path = 'units.main';
+
+# dimension(unit)
+query T
+SELECT dimension('mi');
+----
+length
+
+query T
+SELECT dimension('kg');
+----
+mass
+
+query T
+SELECT dimension('atm');
+----
+pressure
+
+# Unknown unit → NULL dimension.
+query T
+SELECT dimension('frobnicate');
+----
+NULL
+
+# compatible(a, b): same dimension?
+query I
+SELECT compatible('mi', 'km');
+----
+true
+
+query I
+SELECT compatible('mi', 'kg');
+----
+false
+
+# Unknown unit is never compatible.
+query I
+SELECT compatible('mi', 'frobnicate');
+----
+false
+
+# parse_quantity returns STRUCT(value, unit).
+query RT
+SELECT (parse_quantity('5 km')).value, (parse_quantity('5 km')).unit;
+----
+5.0	km
+
+query RT
+SELECT (parse_quantity('3.2kg')).value, (parse_quantity('3.2kg')).unit;
+----
+3.2	kg
+
+query RT
+SELECT (parse_quantity('10 m/s')).value, (parse_quantity('10 m/s')).unit;
+----
+10.0	m/s
+
+# Unparseable → NULL struct.
+query I
+SELECT parse_quantity('not a quantity') IS NULL;
+----
+true
+
+# supported_units() discovery: non-empty, includes known rows.
+query I
+SELECT count(*) > 0 FROM supported_units();
+----
+true
+
+query TTT
+SELECT unit, dimension, base_unit FROM supported_units() WHERE unit = 'mi';
+----
+mi	length	m
+
+query I
+SELECT count(*) FROM supported_units() WHERE unit = 'GiB' AND dimension = 'data';
+----
+1
+
+statement ok
+USE memory;
+
+statement ok
+DETACH units;
