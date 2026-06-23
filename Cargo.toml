@@ -16,9 +16,9 @@ repository = "https://github.com/Query-farm/vgi-units"
 # single arrow/vgi-rpc resolves.
 vgi = "0.6.0"
 vgi-rpc = { version = "0.4.0", default-features = false, features = ["macros", "http"] }
-arrow-array = "58"
-arrow-buffer = "58"
-arrow-schema = "58"
+arrow-array = "59"
+arrow-buffer = "59"
+arrow-schema = "59"
 
 [profile.release]
 opt-level = 2
