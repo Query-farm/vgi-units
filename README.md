@@ -4,10 +4,19 @@
 
 <p align="center"><em>A <a href="https://query.farm">Query.Farm</a> VGI worker for DuckDB.</em></p>
 
-# vgi-units
+# Physical Unit Conversion & Dimensional Analysis in DuckDB
+
+> **vgi-units** · a [Query.Farm](https://query.farm) VGI worker
 
 A [VGI](https://query.farm) worker that brings **runtime, string-driven physical
 unit conversion** and **dimensional analysis** to DuckDB over Apache Arrow.
+Convert a value between any two units given as plain strings
+(`convert(1, 'mi', 'km')`), parse quantities out of text (`'5 km'`), ask a unit's
+dimension, and check whether two units are compatible — across **14 physical
+dimensions** (length, mass, time, temperature, data, energy, pressure, speed, …)
+and ~300 unit strings. Units resolve at *runtime* from a curated table, so
+neither side has to be known when the query is written; an incompatible
+conversion (km → kg) is a clear error rather than a wrong number.
 
 ```sql
 LOAD vgi;
