@@ -1,3 +1,9 @@
+<p align="center">
+  <img src="docs/vgi-logo.png" alt="Vector Gateway Interface (VGI)" width="320">
+</p>
+
+<p align="center"><em>A <a href="https://query.farm">Query.Farm</a> VGI worker for DuckDB.</em></p>
+
 # vgi-units
 
 A [VGI](https://query.farm) worker that brings **runtime, string-driven physical
@@ -94,3 +100,12 @@ The SQL E2E suite uses [`haybarn-unittest`](https://query.farm)
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+---
+
+## Authorship & License
+
+Written by [Query.Farm](https://query.farm) — every VGI worker is designed and built by Query.Farm.
+
+Copyright 2026 Query Farm LLC - https://query.farm
+
