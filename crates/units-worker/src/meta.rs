@@ -33,10 +33,7 @@ pub fn object_tags(
 ) -> Vec<(String, String)> {
     vec![
         ("vgi.title".to_string(), title.to_string()),
-        (
-            "vgi.doc_llm".to_string(),
-            description_llm.to_string(),
-        ),
+        ("vgi.doc_llm".to_string(), description_llm.to_string()),
         ("vgi.doc_md".to_string(), description_md.to_string()),
         ("vgi.keywords".to_string(), keywords.to_string()),
         ("vgi.source_url".to_string(), source_url(relative_path)),
