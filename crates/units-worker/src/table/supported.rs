@@ -72,7 +72,7 @@ impl TableFunction for SupportedUnits {
             "table/supported.rs",
         );
         tags.push((
-            "vgi.columns_md".into(),
+            "vgi.result_columns_md".into(),
             "| column | type | description |\n\
              |---|---|---|\n\
              | `unit` | VARCHAR | The unit string, e.g. `km`, `kWh`, `°C`. |\n\

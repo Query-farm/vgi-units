@@ -56,7 +56,7 @@ fn catalog_metadata(name: &str) -> CatalogModel {
                     .to_string(),
             ),
             (
-                "vgi.description_llm".to_string(),
+                "vgi.doc_llm".to_string(),
                 "Convert physical quantities between units of the same dimension (length, mass, \
                  time, energy, data, temperature, …), express a value in its SI base unit, test \
                  whether two units are compatible, parse quantity strings like '5 km', and look \
@@ -64,7 +64,7 @@ fn catalog_metadata(name: &str) -> CatalogModel {
                     .to_string(),
             ),
             (
-                "vgi.description_md".to_string(),
+                "vgi.doc_md".to_string(),
                 "# units\n\nRuntime physical-unit conversion and dimensional analysis over Apache \
                  Arrow.\n\nScalars: `convert`, `to_base`, `dimension`, `compatible`, \
                  `parse_quantity`, `units_version`. Table: `supported_units`."
@@ -107,14 +107,14 @@ fn catalog_metadata(name: &str) -> CatalogModel {
                         .to_string(),
                 ),
                 (
-                    "vgi.description_llm".to_string(),
+                    "vgi.doc_llm".to_string(),
                     "Unit-conversion and dimensional-analysis functions: convert between units, \
                      express values in SI base units, test unit compatibility, parse quantity \
                      strings, and look up a unit's dimension."
                         .to_string(),
                 ),
                 (
-                    "vgi.description_md".to_string(),
+                    "vgi.doc_md".to_string(),
                     "Unit-conversion and dimensional-analysis functions over Apache Arrow."
                         .to_string(),
                 ),
