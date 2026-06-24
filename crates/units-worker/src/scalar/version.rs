@@ -26,6 +26,14 @@ impl ScalarFunction for UnitsVersion {
                 description: "Return the units worker version string.".into(),
                 expected_output: None,
             }],
+            tags: crate::meta::object_tags(
+                "Units Worker Version",
+                "Return the semantic version string of the running units worker binary. Useful for \
+                 diagnostics and confirming which build is attached.",
+                "Return the units worker version string, e.g. `units_version()` → '0.1.0'.",
+                "version, build version, units_version, diagnostics, worker version, semver",
+                "scalar/version.rs",
+            ),
             ..Default::default()
         }
     }

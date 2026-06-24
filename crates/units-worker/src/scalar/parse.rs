@@ -36,6 +36,17 @@ impl ScalarFunction for ParseQuantity {
                 description: "Parse a quantity string into a (value, unit) struct.".into(),
                 expected_output: None,
             }],
+            tags: crate::meta::object_tags(
+                "Parse Quantity String",
+                "Parse free-form quantity text such as '5 km', '3.2kg', or '10 m/s' into a \
+                 STRUCT(value DOUBLE, unit VARCHAR). Returns a NULL struct when the text has no \
+                 number or the unit is unrecognized.",
+                "Parse quantity text into a `(value, unit)` struct, e.g. \
+                 `parse_quantity('5 km')` → `{value: 5.0, unit: 'km'}`.",
+                "parse, parse quantity, split value and unit, extract number, tokenize quantity, \
+                 5 km, value unit struct",
+                "scalar/parse.rs",
+            ),
             ..Default::default()
         }
     }

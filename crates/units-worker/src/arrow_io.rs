@@ -5,8 +5,8 @@
 
 use arrow_array::cast::AsArray;
 use arrow_array::types::{
-    Float32Type, Float64Type, Int16Type, Int32Type, Int64Type, Int8Type, UInt16Type, UInt32Type,
-    UInt64Type, UInt8Type,
+    Decimal128Type, Decimal256Type, Float32Type, Float64Type, Int16Type, Int32Type, Int64Type,
+    Int8Type, UInt16Type, UInt32Type, UInt64Type, UInt8Type,
 };
 use arrow_array::{Array, ArrayRef};
 use arrow_schema::{DataType, Field, Fields};
@@ -30,8 +30,9 @@ pub fn text_str(col: &ArrayRef, row: usize) -> Result<Option<&str>> {
 }
 
 /// Read element `row` of a numeric column as `f64`, or `None` if null. Accepts any
-/// of DuckDB's numeric input widths (it may hand us DOUBLE, but also INTEGER etc.
-/// for a literal like `convert(5, …)`). Errors on a non-numeric column.
+/// of DuckDB's numeric input widths (it may hand us DOUBLE, but also INTEGER for a
+/// literal like `convert(5, …)`, or DECIMAL for a literal like `convert(26.2, …)`,
+/// which DuckDB types as `DECIMAL(3,1)`). Errors on a non-numeric column.
 pub fn double_val(col: &ArrayRef, row: usize) -> Result<Option<f64>> {
     if col.is_null(row) {
         return Ok(None);
@@ -47,6 +48,16 @@ pub fn double_val(col: &ArrayRef, row: usize) -> Result<Option<f64>> {
         DataType::UInt32 => col.as_primitive::<UInt32Type>().value(row) as f64,
         DataType::UInt16 => col.as_primitive::<UInt16Type>().value(row) as f64,
         DataType::UInt8 => col.as_primitive::<UInt8Type>().value(row) as f64,
+        // DECIMAL(p,s): scaled integer → f64 via 10^-scale. DuckDB hands a bare
+        // numeric literal like `26.2` to a scalar as DECIMAL, not DOUBLE.
+        DataType::Decimal128(_, scale) => {
+            let raw = col.as_primitive::<Decimal128Type>().value(row);
+            raw as f64 / 10f64.powi(*scale as i32)
+        }
+        DataType::Decimal256(_, scale) => {
+            let raw = col.as_primitive::<Decimal256Type>().value(row);
+            raw.to_i128().map(|v| v as f64).unwrap_or(f64::NAN) / 10f64.powi(*scale as i32)
+        }
         other => {
             return Err(RpcError::value_error(format!(
                 "expected a numeric (DOUBLE) argument, got {other:?}"

@@ -43,6 +43,18 @@ impl ScalarFunction for Convert {
                 description: "Convert a marathon distance from miles to kilometres.".into(),
                 expected_output: None,
             }],
+            tags: crate::meta::object_tags(
+                "Convert Units",
+                "Convert a numeric value from one unit to another unit of the same physical \
+                 dimension, e.g. miles to kilometres, pounds to kilograms, or °C to °F. Returns \
+                 NULL when either unit string is unknown, and raises an error when the two units \
+                 belong to incompatible dimensions (e.g. km to kg).",
+                "Convert a value between two units of the same dimension, e.g. \
+                 `convert(26.2, 'mi', 'km')`.",
+                "convert, conversion, unit conversion, change units, miles to km, pounds to kg, \
+                 celsius to fahrenheit, length, mass, temperature, scale",
+                "scalar/convert.rs",
+            ),
             ..Default::default()
         }
     }
@@ -104,6 +116,17 @@ impl ScalarFunction for ToBase {
                 description: "Express 100 centimetres in the SI base unit (metres).".into(),
                 expected_output: None,
             }],
+            tags: crate::meta::object_tags(
+                "Convert to SI Base Unit",
+                "Express a numeric value in the SI base unit of its dimension, e.g. centimetres to \
+                 metres, grams to kilograms, or GiB to bytes. Returns NULL when the unit string is \
+                 unknown.",
+                "Express a value in the SI base unit of its dimension, e.g. \
+                 `to_base(100, 'cm')` → 1.0 (metres).",
+                "to_base, base unit, SI, normalize, canonical unit, metres, kilograms, bytes, \
+                 normalise units",
+                "scalar/convert.rs",
+            ),
             ..Default::default()
         }
     }
@@ -232,6 +255,35 @@ mod tests {
         assert!(out.is_null(0));
         let out = run_convert(&[Some(1.0)], &[None], &[Some("km")]).unwrap();
         assert!(out.is_null(0));
+    }
+
+    #[test]
+    fn convert_accepts_decimal_value() {
+        // DuckDB types a bare literal like `26.2` as DECIMAL(3,1), not DOUBLE, so
+        // `double_val` must accept Decimal128 (and round-trip the scale).
+        use arrow_array::Decimal128Array;
+        let v: ArrayRef = Arc::new(
+            Decimal128Array::from(vec![262i128])
+                .with_precision_and_scale(3, 1)
+                .unwrap(),
+        );
+        let f: ArrayRef = Arc::new(StringArray::from(vec![Some("mi")]));
+        let t: ArrayRef = Arc::new(StringArray::from(vec![Some("km")]));
+        let schema = Arc::new(Schema::new(vec![
+            Field::new("value", v.data_type().clone(), true),
+            Field::new("from", DataType::Utf8, true),
+            Field::new("to", DataType::Utf8, true),
+        ]));
+        let batch = RecordBatch::try_new(schema.clone(), vec![v, f, t]).unwrap();
+        let bind = BindParams {
+            input_schema: Some(schema),
+            ..Default::default()
+        };
+        let bound = Convert.on_bind(&bind).unwrap();
+        let params = process_params(bound.output_schema, Arguments::default());
+        let out = Convert.process(&params, &batch).unwrap();
+        let d = out.column(0).as_primitive::<Float64Type>();
+        close(d.value(0), 26.2 * 1.609344);
     }
 
     #[test]

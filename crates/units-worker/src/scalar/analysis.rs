@@ -34,6 +34,17 @@ impl ScalarFunction for DimensionFn {
                 description: "Identify the physical dimension of a unit (energy).".into(),
                 expected_output: None,
             }],
+            tags: crate::meta::object_tags(
+                "Unit Dimension",
+                "Return the physical dimension of a unit as a lowercase name such as 'length', \
+                 'mass', 'time', 'energy', or 'data'. Returns NULL when the unit string is \
+                 unknown.",
+                "Return the physical dimension of a unit, e.g. \
+                 `dimension('kWh')` → 'energy'.",
+                "dimension, physical dimension, quantity kind, length, mass, time, energy, data, \
+                 classify unit, what is this unit",
+                "scalar/analysis.rs",
+            ),
             ..Default::default()
         }
     }
@@ -89,6 +100,17 @@ impl ScalarFunction for Compatible {
                 description: "Check whether two units can be converted between (true).".into(),
                 expected_output: None,
             }],
+            tags: crate::meta::object_tags(
+                "Units Compatible?",
+                "Return TRUE when two units share the same physical dimension and can therefore be \
+                 converted between one another (e.g. 'mi' and 'km'), and FALSE otherwise. Unknown \
+                 units are never compatible. Returns NULL when either operand is NULL.",
+                "Check whether two units share a dimension (are convertible), e.g. \
+                 `compatible('mi', 'km')` → true.",
+                "compatible, convertible, same dimension, can convert, comparable units, \
+                 dimensional check, validate units",
+                "scalar/analysis.rs",
+            ),
             ..Default::default()
         }
     }

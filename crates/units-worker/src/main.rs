@@ -21,6 +21,7 @@
 //! the `scalar/` and `table/` modules are thin Arrow adapters over it.
 
 mod arrow_io;
+mod meta;
 mod scalar;
 mod table;
 mod units;
@@ -44,6 +45,16 @@ fn catalog_metadata(name: &str) -> CatalogModel {
             "Runtime, string-driven physical-unit conversion and dimensional analysis.".to_string(),
         ),
         tags: vec![
+            (
+                "vgi.title".to_string(),
+                "Unit Conversion & Dimensional Analysis".to_string(),
+            ),
+            (
+                "vgi.keywords".to_string(),
+                "units, unit conversion, convert, dimensional analysis, measurement, length, \
+                 mass, time, energy, temperature, data, SI, metric, imperial"
+                    .to_string(),
+            ),
             (
                 "vgi.description_llm".to_string(),
                 "Convert physical quantities between units of the same dimension (length, mass, \
@@ -79,6 +90,22 @@ fn catalog_metadata(name: &str) -> CatalogModel {
             name: "main".to_string(),
             comment: Some("Unit-conversion and dimensional-analysis functions.".to_string()),
             tags: vec![
+                ("vgi.title".to_string(), "Units — main".to_string()),
+                (
+                    "vgi.keywords".to_string(),
+                    "units, unit conversion, convert, to_base, dimension, compatible, \
+                     parse_quantity, supported_units, dimensional analysis, measurement"
+                        .to_string(),
+                ),
+                // VGI123 classifying tags (bare keys: domain/category/topic) for faceting.
+                ("domain".to_string(), "units-and-measurement".to_string()),
+                ("category".to_string(), "conversion".to_string()),
+                ("topic".to_string(), "dimensional-analysis".to_string()),
+                (
+                    "vgi.source_url".to_string(),
+                    "https://github.com/Query-farm/vgi-units/blob/main/crates/units-worker/src/main.rs"
+                        .to_string(),
+                ),
                 (
                     "vgi.description_llm".to_string(),
                     "Unit-conversion and dimensional-analysis functions: convert between units, \
@@ -89,6 +116,17 @@ fn catalog_metadata(name: &str) -> CatalogModel {
                 (
                     "vgi.description_md".to_string(),
                     "Unit-conversion and dimensional-analysis functions over Apache Arrow."
+                        .to_string(),
+                ),
+                // VGI506 representative example queries for the schema.
+                (
+                    "vgi.example_queries".to_string(),
+                    "SELECT units.main.convert(26.2, 'mi', 'km');\n\
+                     SELECT units.main.to_base(1, 'GiB');\n\
+                     SELECT units.main.dimension('kWh');\n\
+                     SELECT units.main.compatible('mi', 'km');\n\
+                     SELECT units.main.parse_quantity('5 km');\n\
+                     SELECT * FROM units.main.supported_units() WHERE dimension = 'length';"
                         .to_string(),
                 ),
             ],
