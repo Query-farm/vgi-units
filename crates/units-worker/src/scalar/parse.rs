@@ -9,7 +9,10 @@ use arrow_array::builder::{Float64Builder, StringBuilder};
 use arrow_array::{ArrayRef, RecordBatch, StructArray};
 use arrow_buffer::NullBuffer;
 use arrow_schema::DataType;
-use vgi::{ArgSpec, BindParams, BindResponse, FunctionMetadata, ProcessParams, ScalarFunction};
+use vgi::{
+    ArgSpec, BindParams, BindResponse, FunctionExample, FunctionMetadata, ProcessParams,
+    ScalarFunction,
+};
 use vgi_rpc::{Result, RpcError};
 
 use crate::arrow_io::{quantity_struct_fields, text_str};
@@ -28,6 +31,11 @@ impl ScalarFunction for ParseQuantity {
                           STRUCT(value DOUBLE, unit VARCHAR); NULL if unparseable \
                           or the unit is unknown"
                 .into(),
+            examples: vec![FunctionExample {
+                sql: "SELECT units.main.parse_quantity('5 km');".into(),
+                description: "Parse a quantity string into a (value, unit) struct.".into(),
+                expected_output: None,
+            }],
             ..Default::default()
         }
     }

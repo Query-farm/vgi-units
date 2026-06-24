@@ -16,7 +16,10 @@ use std::sync::Arc;
 use arrow_array::builder::Float64Builder;
 use arrow_array::{ArrayRef, RecordBatch};
 use arrow_schema::DataType;
-use vgi::{ArgSpec, BindParams, BindResponse, FunctionMetadata, ProcessParams, ScalarFunction};
+use vgi::{
+    ArgSpec, BindParams, BindResponse, FunctionExample, FunctionMetadata, ProcessParams,
+    ScalarFunction,
+};
 use vgi_rpc::{Result, RpcError};
 
 use crate::arrow_io::{double_val, text_str};
@@ -35,6 +38,11 @@ impl ScalarFunction for Convert {
                           is unknown; ERROR if the dimensions are incompatible)"
                 .into(),
             return_type: Some(DataType::Float64),
+            examples: vec![FunctionExample {
+                sql: "SELECT units.main.convert(26.2, 'mi', 'km');".into(),
+                description: "Convert a marathon distance from miles to kilometres.".into(),
+                expected_output: None,
+            }],
             ..Default::default()
         }
     }
@@ -91,6 +99,11 @@ impl ScalarFunction for ToBase {
                           is unknown)"
                 .into(),
             return_type: Some(DataType::Float64),
+            examples: vec![FunctionExample {
+                sql: "SELECT units.main.to_base(100, 'cm');".into(),
+                description: "Express 100 centimetres in the SI base unit (metres).".into(),
+                expected_output: None,
+            }],
             ..Default::default()
         }
     }

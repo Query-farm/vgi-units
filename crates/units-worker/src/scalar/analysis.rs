@@ -6,7 +6,10 @@ use std::sync::Arc;
 use arrow_array::builder::{BooleanBuilder, StringBuilder};
 use arrow_array::{ArrayRef, RecordBatch};
 use arrow_schema::DataType;
-use vgi::{ArgSpec, BindParams, BindResponse, FunctionMetadata, ProcessParams, ScalarFunction};
+use vgi::{
+    ArgSpec, BindParams, BindResponse, FunctionExample, FunctionMetadata, ProcessParams,
+    ScalarFunction,
+};
 use vgi_rpc::{Result, RpcError};
 
 use crate::arrow_io::text_str;
@@ -26,6 +29,11 @@ impl ScalarFunction for DimensionFn {
                           ('length'|'mass'|'time'|…), or NULL if the unit is unknown"
                 .into(),
             return_type: Some(DataType::Utf8),
+            examples: vec![FunctionExample {
+                sql: "SELECT units.main.dimension('kWh');".into(),
+                description: "Identify the physical dimension of a unit (energy).".into(),
+                expected_output: None,
+            }],
             ..Default::default()
         }
     }
@@ -76,6 +84,11 @@ impl ScalarFunction for Compatible {
                           Unknown units are never compatible"
                 .into(),
             return_type: Some(DataType::Boolean),
+            examples: vec![FunctionExample {
+                sql: "SELECT units.main.compatible('mi', 'km');".into(),
+                description: "Check whether two units can be converted between (true).".into(),
+                expected_output: None,
+            }],
             ..Default::default()
         }
     }

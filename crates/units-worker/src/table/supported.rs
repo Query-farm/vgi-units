@@ -31,6 +31,15 @@ impl TableFunction for SupportedUnits {
     fn metadata(&self) -> FunctionMetadata {
         FunctionMetadata {
             description: "List every supported unit with its dimension and SI base unit".into(),
+            tags: vec![(
+                "vgi.columns_md".into(),
+                "| column | type | description |\n\
+                 |---|---|---|\n\
+                 | `unit` | VARCHAR | The unit string, e.g. `km`, `kWh`, `°C`. |\n\
+                 | `dimension` | VARCHAR | Physical dimension, e.g. `length`, `energy`. |\n\
+                 | `base_unit` | VARCHAR | The SI base unit for the dimension. |"
+                    .into(),
+            )],
             ..Default::default()
         }
     }
