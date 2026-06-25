@@ -5,37 +5,46 @@
 //! - `vgi.title` (VGI124)        — human-friendly display name
 //! - `vgi.doc_llm` (VGI112) — concise prose aimed at LLMs
 //! - `vgi.doc_md` (VGI113)  — short Markdown description
-//! - `vgi.keywords` (VGI126)        — comma-separated search terms/synonyms
-//! - `vgi.source_url` (VGI128)      — link to the implementing source file
+//! - `vgi.keywords` (VGI126/VGI138) — a JSON array of search terms/synonyms
 //!
-//! `source_url(file)` builds the canonical GitHub blob URL for a source file so
-//! every object points at exactly where it is implemented.
+//! Per-object `vgi.source_url` is intentionally NOT emitted here: `vgi.source_url`
+//! belongs on the catalog object only (VGI139). The catalog's `source_url` field
+//! already points at the repo.
 
-/// Base GitHub blob URL for source files in this repo (pinned to `main`).
-const SOURCE_BASE: &str =
-    "https://github.com/Query-farm/vgi-units/blob/main/crates/units-worker/src";
-
-/// Build the implementation `vgi.source_url` for a file under `units-worker/src`,
-/// e.g. `source_url("scalar/convert.rs")`.
-pub fn source_url(relative_path: &str) -> String {
-    format!("{SOURCE_BASE}/{relative_path}")
+/// Encode comma-separated keywords as the JSON array of strings that
+/// `vgi.keywords` requires (VGI138). Each term is trimmed and empty terms are
+/// dropped; the result is e.g. `["units","convert","length"]`.
+pub fn keywords_json(keywords: &str) -> String {
+    let items: Vec<String> = keywords
+        .split(',')
+        .map(str::trim)
+        .filter(|k| !k.is_empty())
+        // JSON-escape each keyword (covers quotes/backslashes) by emitting a
+        // one-element array and stripping the surrounding brackets.
+        .map(|k| {
+            let escaped = k.replace('\\', "\\\\").replace('"', "\\\"");
+            format!("\"{escaped}\"")
+        })
+        .collect();
+    format!("[{}]", items.join(","))
 }
 
-/// Build the five standard per-object discovery/description tags.
+/// Build the four standard per-object discovery/description tags.
 ///
-/// `relative_path` is the implementing file relative to `units-worker/src`.
+/// `relative_path` is the implementing file relative to `units-worker/src`; it is
+/// retained for call-site documentation but no longer emitted as a per-object
+/// `vgi.source_url` (that tag is catalog-only — VGI139).
 pub fn object_tags(
     title: &str,
     description_llm: &str,
     description_md: &str,
     keywords: &str,
-    relative_path: &str,
+    _relative_path: &str,
 ) -> Vec<(String, String)> {
     vec![
         ("vgi.title".to_string(), title.to_string()),
         ("vgi.doc_llm".to_string(), description_llm.to_string()),
         ("vgi.doc_md".to_string(), description_md.to_string()),
-        ("vgi.keywords".to_string(), keywords.to_string()),
-        ("vgi.source_url".to_string(), source_url(relative_path)),
+        ("vgi.keywords".to_string(), keywords_json(keywords)),
     ]
 }

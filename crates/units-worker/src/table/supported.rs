@@ -46,11 +46,35 @@ const EXECUTABLE_EXAMPLES: &str = r#"[
 
 pub struct SupportedUnits;
 
-fn output_schema() -> SchemaRef {
+/// A column field carrying a `comment` (surfaced via `duckdb_columns().comment`),
+/// so both the scan output and the catalog table document every column.
+fn commented(name: &str, comment: &str) -> Field {
+    Field::new(name, DataType::Utf8, false).with_metadata(std::collections::HashMap::from([(
+        "comment".to_string(),
+        comment.to_string(),
+    )]))
+}
+
+/// The columns produced by `supported_units` — shared by the table function's
+/// `on_bind` and by the catalog table that exposes it as `units.main.supported_units`.
+/// Each column carries a comment so it is documented wherever the schema surfaces.
+pub fn output_schema() -> SchemaRef {
     Arc::new(Schema::new(vec![
-        Field::new("unit", DataType::Utf8, false),
-        Field::new("dimension", DataType::Utf8, false),
-        Field::new("base_unit", DataType::Utf8, false),
+        commented(
+            "unit",
+            "The recognized unit string, e.g. 'km', 'kWh', '°C'. Valid as the unit \
+             argument to convert, to_base, dimension, compatible, and parse_quantity.",
+        ),
+        commented(
+            "dimension",
+            "The physical dimension the unit measures, as a lowercase name such as \
+             'length', 'mass', 'time', 'energy', or 'data'.",
+        ),
+        commented(
+            "base_unit",
+            "The SI base unit of the dimension that all conversions in that dimension \
+             pass through, e.g. 'm' for length or 'kg' for mass.",
+        ),
     ]))
 }
 

@@ -51,9 +51,10 @@ fn catalog_metadata(name: &str) -> CatalogModel {
             ),
             (
                 "vgi.keywords".to_string(),
-                "units, unit conversion, convert, dimensional analysis, measurement, length, \
-                 mass, time, energy, temperature, data, SI, metric, imperial"
-                    .to_string(),
+                crate::meta::keywords_json(
+                    "units, unit conversion, convert, dimensional analysis, measurement, length, \
+                     mass, time, energy, temperature, data, SI, metric, imperial",
+                ),
             ),
             (
                 "vgi.doc_llm".to_string(),
@@ -65,9 +66,17 @@ fn catalog_metadata(name: &str) -> CatalogModel {
             ),
             (
                 "vgi.doc_md".to_string(),
-                "# units\n\nRuntime physical-unit conversion and dimensional analysis over Apache \
-                 Arrow.\n\nScalars: `convert`, `to_base`, `dimension`, `compatible`, \
-                 `parse_quantity`, `units_version`. Table: `supported_units`."
+                "# units\n\nRuntime, string-driven physical-unit conversion and dimensional \
+                 analysis over Apache Arrow. Unlike compile-time-typed unit libraries, units are \
+                 named by ordinary strings (`'mi'`, `'GiB'`, `'°C'`) resolved at query time, so \
+                 you can convert and analyse quantities directly in SQL.\n\nA curated table maps \
+                 each unit to a `(dimension, factor, offset)` triple; conversion is an affine \
+                 round-trip through the SI base unit of the dimension, covering length, mass, \
+                 time, energy, temperature, data sizes, and more.\n\n**Scalars:** `convert` \
+                 (between two units), `to_base` (to the SI base unit), `dimension` (a unit's \
+                 dimension), `compatible` (do two units share a dimension?), `parse_quantity` \
+                 (split `'5 km'` into value + unit), and `units_version`.\n\n**Table:** \
+                 `supported_units` lists every recognized unit with its dimension and base unit."
                     .to_string(),
             ),
             ("vgi.author".to_string(), "Query.Farm".to_string()),
@@ -93,19 +102,17 @@ fn catalog_metadata(name: &str) -> CatalogModel {
                 ("vgi.title".to_string(), "Units — main".to_string()),
                 (
                     "vgi.keywords".to_string(),
-                    "units, unit conversion, convert, to_base, dimension, compatible, \
-                     parse_quantity, supported_units, dimensional analysis, measurement"
-                        .to_string(),
+                    crate::meta::keywords_json(
+                        "units, unit conversion, convert, to_base, dimension, compatible, \
+                         parse_quantity, supported_units, dimensional analysis, measurement",
+                    ),
                 ),
                 // VGI123 classifying tags (bare keys: domain/category/topic) for faceting.
                 ("domain".to_string(), "units-and-measurement".to_string()),
                 ("category".to_string(), "conversion".to_string()),
                 ("topic".to_string(), "dimensional-analysis".to_string()),
-                (
-                    "vgi.source_url".to_string(),
-                    "https://github.com/Query-farm/vgi-units/blob/main/crates/units-worker/src/main.rs"
-                        .to_string(),
-                ),
+                // NOTE: no per-schema `vgi.source_url` (VGI139) — `source_url`
+                // lives on the catalog object below.
                 (
                     "vgi.doc_llm".to_string(),
                     "Unit-conversion and dimensional-analysis functions: convert between units, \
@@ -115,7 +122,10 @@ fn catalog_metadata(name: &str) -> CatalogModel {
                 ),
                 (
                     "vgi.doc_md".to_string(),
-                    "Unit-conversion and dimensional-analysis functions over Apache Arrow."
+                    "The single schema for the `units` worker. It holds the unit-conversion and \
+                     dimensional-analysis functions — `convert`, `to_base`, `dimension`, \
+                     `compatible`, `parse_quantity`, `units_version` — plus the `supported_units` \
+                     discovery table listing every recognized unit, its dimension, and base unit."
                         .to_string(),
                 ),
                 // VGI506 representative example queries for the schema.
@@ -132,7 +142,11 @@ fn catalog_metadata(name: &str) -> CatalogModel {
             ],
             views: Vec::new(),
             macros: Vec::new(),
-            tables: Vec::new(),
+            // Expose the parameterless `supported_units` scan as a regular table
+            // (VGI311) so `SELECT * FROM units.main.supported_units` works
+            // without parentheses. `with_function` auto-registers the backing
+            // table function, so no separate `table::register` is needed.
+            tables: vec![table::supported_units_table()],
         }],
         ..Default::default()
     }
@@ -154,7 +168,9 @@ fn main() {
 
     let mut worker = Worker::new();
     scalar::register(&mut worker);
-    table::register(&mut worker);
+    // The `supported_units` table function is auto-registered by `set_catalog`
+    // via the `CatTable::with_function` entry in `catalog_metadata`, so no
+    // separate `table::register` call is needed here.
     worker.set_catalog(catalog_metadata(&catalog_name));
     worker.run();
 }

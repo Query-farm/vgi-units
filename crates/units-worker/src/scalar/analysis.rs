@@ -54,7 +54,8 @@ impl ScalarFunction for DimensionFn {
             "unit",
             0,
             DataType::Utf8,
-            "Unit string, e.g. 'mi' (VARCHAR)",
+            "The unit to classify, e.g. 'mi'. Returns the unit's physical dimension; an \
+             unrecognized unit yields NULL.",
         )]
     }
 
@@ -118,8 +119,20 @@ impl ScalarFunction for Compatible {
 
     fn argument_specs(&self) -> Vec<ArgSpec> {
         vec![
-            ArgSpec::column_typed("unit_a", 0, DataType::Utf8, "First unit (VARCHAR)"),
-            ArgSpec::column_typed("unit_b", 1, DataType::Utf8, "Second unit (VARCHAR)"),
+            ArgSpec::column_typed(
+                "unit_a",
+                0,
+                DataType::Utf8,
+                "The first unit to compare, e.g. 'mi'. The result is whether it shares a \
+                 dimension with unit_b (and is therefore convertible).",
+            ),
+            ArgSpec::column_typed(
+                "unit_b",
+                1,
+                DataType::Utf8,
+                "The second unit to compare, e.g. 'km'. Compared against unit_a to test \
+                 dimensional compatibility.",
+            ),
         ]
     }
 

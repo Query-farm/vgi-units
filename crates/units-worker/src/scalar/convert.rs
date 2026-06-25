@@ -61,18 +61,25 @@ impl ScalarFunction for Convert {
 
     fn argument_specs(&self) -> Vec<ArgSpec> {
         vec![
-            ArgSpec::any_column("value", 0, "Numeric value to convert (DOUBLE)"),
+            ArgSpec::any_column(
+                "value",
+                0,
+                "The quantity to convert, expressed in the source unit (e.g. 26.2 for a marathon \
+                 in miles).",
+            ),
             ArgSpec::column_typed(
                 "from_unit",
                 1,
                 DataType::Utf8,
-                "Source unit, e.g. 'mi' (VARCHAR)",
+                "The unit the value is currently in, e.g. 'mi'. Must be a unit string the worker \
+                 recognizes (see supported_units); an unknown unit yields NULL.",
             ),
             ArgSpec::column_typed(
                 "to_unit",
                 2,
                 DataType::Utf8,
-                "Target unit, e.g. 'km' (VARCHAR)",
+                "The unit to convert the value into, e.g. 'km'. Must share a dimension with \
+                 from_unit, otherwise the call errors.",
             ),
         ]
     }
@@ -143,12 +150,18 @@ impl ScalarFunction for ToBase {
 
     fn argument_specs(&self) -> Vec<ArgSpec> {
         vec![
-            ArgSpec::any_column("value", 0, "Numeric value (DOUBLE)"),
+            ArgSpec::any_column(
+                "value",
+                0,
+                "The quantity to express in its SI base unit, given in the unit named by `unit` \
+                 (e.g. 100 for 100 centimetres).",
+            ),
             ArgSpec::column_typed(
                 "unit",
                 1,
                 DataType::Utf8,
-                "Unit of the value, e.g. 'GiB' (VARCHAR)",
+                "The unit the value is given in, e.g. 'GiB'. Must be recognized by the worker; an \
+                 unknown unit yields NULL.",
             ),
         ]
     }

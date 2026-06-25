@@ -56,7 +56,9 @@ impl ScalarFunction for ParseQuantity {
             "text",
             0,
             DataType::Utf8,
-            "Quantity text, e.g. '5 km' (VARCHAR)",
+            "Free-form quantity text combining a number and a unit, e.g. '5 km', '3.2kg', or \
+             '10 m/s'. Split into a (value, unit) struct; NULL when no number is present or the \
+             unit is unrecognized.",
         )]
     }
 
