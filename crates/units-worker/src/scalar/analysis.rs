@@ -50,9 +50,10 @@ impl ScalarFunction for DimensionFn {
     }
 
     fn argument_specs(&self) -> Vec<ArgSpec> {
-        vec![ArgSpec::any_column(
+        vec![ArgSpec::column_typed(
             "unit",
             0,
+            DataType::Utf8,
             "Unit string, e.g. 'mi' (VARCHAR)",
         )]
     }
@@ -117,8 +118,8 @@ impl ScalarFunction for Compatible {
 
     fn argument_specs(&self) -> Vec<ArgSpec> {
         vec![
-            ArgSpec::any_column("unit_a", 0, "First unit (VARCHAR)"),
-            ArgSpec::any_column("unit_b", 1, "Second unit (VARCHAR)"),
+            ArgSpec::column_typed("unit_a", 0, DataType::Utf8, "First unit (VARCHAR)"),
+            ArgSpec::column_typed("unit_b", 1, DataType::Utf8, "Second unit (VARCHAR)"),
         ]
     }
 

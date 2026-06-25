@@ -62,8 +62,18 @@ impl ScalarFunction for Convert {
     fn argument_specs(&self) -> Vec<ArgSpec> {
         vec![
             ArgSpec::any_column("value", 0, "Numeric value to convert (DOUBLE)"),
-            ArgSpec::any_column("from_unit", 1, "Source unit, e.g. 'mi' (VARCHAR)"),
-            ArgSpec::any_column("to_unit", 2, "Target unit, e.g. 'km' (VARCHAR)"),
+            ArgSpec::column_typed(
+                "from_unit",
+                1,
+                DataType::Utf8,
+                "Source unit, e.g. 'mi' (VARCHAR)",
+            ),
+            ArgSpec::column_typed(
+                "to_unit",
+                2,
+                DataType::Utf8,
+                "Target unit, e.g. 'km' (VARCHAR)",
+            ),
         ]
     }
 
@@ -134,7 +144,12 @@ impl ScalarFunction for ToBase {
     fn argument_specs(&self) -> Vec<ArgSpec> {
         vec![
             ArgSpec::any_column("value", 0, "Numeric value (DOUBLE)"),
-            ArgSpec::any_column("unit", 1, "Unit of the value, e.g. 'GiB' (VARCHAR)"),
+            ArgSpec::column_typed(
+                "unit",
+                1,
+                DataType::Utf8,
+                "Unit of the value, e.g. 'GiB' (VARCHAR)",
+            ),
         ]
     }
 

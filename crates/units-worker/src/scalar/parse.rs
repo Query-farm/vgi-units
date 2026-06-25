@@ -52,9 +52,10 @@ impl ScalarFunction for ParseQuantity {
     }
 
     fn argument_specs(&self) -> Vec<ArgSpec> {
-        vec![ArgSpec::any_column(
+        vec![ArgSpec::column_typed(
             "text",
             0,
+            DataType::Utf8,
             "Quantity text, e.g. '5 km' (VARCHAR)",
         )]
     }
