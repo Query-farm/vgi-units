@@ -107,6 +107,28 @@ fn catalog_metadata(name: &str) -> CatalogModel {
                         "WITH q AS (SELECT units.main.parse_quantity('5 km') AS p) \
                          SELECT units.main.to_base((p).value, (p).unit) AS base_value FROM q",
                     ),
+                    (
+                        "dimension_of_unit",
+                        "What physical dimension does the unit 'kWh' belong to? Return a single \
+                         column named dimension.",
+                        "SELECT units.main.dimension('kWh') AS dimension",
+                    ),
+                    (
+                        "compatible_units_check",
+                        "Before running conversions I want to sanity-check some unit pairs. For \
+                         each pair below, tell me whether the two units can be converted between \
+                         each other. Return the pairs in this exact order, with columns unit_a, \
+                         unit_b, and is_compatible: (mi, km), (kg, lb), (kg, m), (mi, zzz).",
+                        "SELECT a AS unit_a, b AS unit_b, units.main.compatible(a, b) AS \
+                         is_compatible FROM (VALUES (1, 'mi', 'km'), (2, 'kg', 'lb'), \
+                         (3, 'kg', 'm'), (4, 'mi', 'zzz')) AS t(ord, a, b) ORDER BY ord",
+                    ),
+                    (
+                        "worker_version",
+                        "What version of the units worker is currently running? Return a single \
+                         row with one column named version.",
+                        "SELECT units.main.units_version() AS version",
+                    ),
                 ]),
             ),
             ("vgi.author".to_string(), "Query.Farm".to_string()),
