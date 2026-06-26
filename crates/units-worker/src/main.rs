@@ -79,6 +79,36 @@ fn catalog_metadata(name: &str) -> CatalogModel {
                  `supported_units` lists every recognized unit with its dimension and base unit."
                     .to_string(),
             ),
+            // Fixed agent-suitability suite run by `vgi-lint simulate`. Each
+            // prompt is solvable using only the exposed functions; the hidden
+            // reference_sql is the canonical solution used to grade.
+            (
+                "vgi.agent_test_tasks".to_string(),
+                crate::meta::agent_test_tasks_json(&[
+                    (
+                        "kwh_to_joules",
+                        "A utility bill lists energy usage as 100 kWh. How many joules is that? \
+                         Return a single column named joules.",
+                        "SELECT units.main.convert(100, 'kWh', 'J') AS joules",
+                    ),
+                    (
+                        "richest_dimension",
+                        "Which physical dimension does this catalog support the most units for, \
+                         and how many units does it have? Return one row with a column named \
+                         dimension and a column named n (the unit count).",
+                        "SELECT dimension, count(*) AS n FROM units.main.supported_units \
+                         GROUP BY dimension ORDER BY n DESC, dimension LIMIT 1",
+                    ),
+                    (
+                        "parse_and_normalize_to_si",
+                        "I have the measurement written as the text '5 km'. Parse it and express \
+                         its value in the SI base unit of its dimension. Return a single column \
+                         named base_value.",
+                        "WITH q AS (SELECT units.main.parse_quantity('5 km') AS p) \
+                         SELECT units.main.to_base((p).value, (p).unit) AS base_value FROM q",
+                    ),
+                ]),
+            ),
             ("vgi.author".to_string(), "Query.Farm".to_string()),
             (
                 "vgi.copyright".to_string(),
