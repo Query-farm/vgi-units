@@ -175,4 +175,13 @@ if grep -qiE "All tests were skipped|total skipped [1-9]" "$REPORT"; then
   echo "       is NOT a pass. Transport=$TRANSPORT worker=$VGI_UNITS_WORKER." >&2
   exit 1
 fi
+# Surface — but do NOT fail on — a Catch2 fatal-signal block in the report. The
+# subprocess transport occasionally logs a "fatal error condition: SIGTERM" when
+# DuckDB terminates the spawned worker at end-of-suite; the assertions have
+# already passed and `status` is 0, so this is benign teardown noise. We only
+# warn (not fail) because it is intermittent — failing would be flaky — but we
+# echo it so it is not silently buried under a green "All tests passed".
+if [[ "$status" -eq 0 ]] && grep -qiE "fatal error condition|SIG(TERM|SEGV|ABRT|KILL)" "$REPORT"; then
+  echo "::warning::haybarn logged a fatal-signal condition during the suite (transport=$TRANSPORT); exit code was 0 so it is treated as benign end-of-suite worker teardown. Review the log if unexpected."
+fi
 exit "$status"

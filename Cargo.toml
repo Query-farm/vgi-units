@@ -22,6 +22,10 @@ arrow-schema = "59"
 
 [profile.release]
 opt-level = 2
+# Strip symbols + debug info from the release binary: ~17MB -> ~14MB (and the
+# published .tar.gz ~5.6MB -> ~4.9MB). The worker has no need for in-binary
+# backtraces in production; build a debug profile locally if you need symbols.
+strip = true
 
 # The published vgi 0.9.4 predates `catalog_copy_from_formats`, which the current
 # community vgi DuckDB extension calls on attach. Track git main (same 0.9.4

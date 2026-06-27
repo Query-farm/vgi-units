@@ -64,9 +64,11 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=build /units-worker /usr/local/bin/units-worker
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/units-worker /usr/local/bin/docker-entrypoint.sh
+# `--chmod` sets the mode in the COPY layer itself. A separate `RUN chmod` would
+# rewrite the whole ~20MB binary into a second layer (overlayfs copies the file
+# on a metadata change), needlessly doubling its on-disk footprint in the image.
+COPY --from=build --chmod=0755 /units-worker /usr/local/bin/units-worker
+COPY --chmod=0755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 # Run unprivileged. No state, no volume — there is nothing to own or persist.
 RUN useradd --create-home --uid 10001 app
