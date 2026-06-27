@@ -1,0 +1,128 @@
+# Copyright 2026 Query Farm LLC - https://query.farm
+#
+# Build standalone `units-worker` binaries for every supported platform and
+# attach them (as compressed archives + SHA256 checksums) to the GitHub Release
+# for a `vX.Y.Z` tag. This is the on-host distribution path: download, unpack,
+# and use the binary directly as a DuckDB vgi LOCATION
+#   ATTACH 'units' (TYPE vgi, LOCATION '/path/to/units-worker');
+# (the container image — docker-publish.yml — is the server/Fly.io path.)
+#
+# Each target builds on its NATIVE runner (no cross-compilation), so the binaries
+# are exactly what that platform produces. The release is gated on the full CI
+# suite and a tag/version match.
+#
+# Release flow:
+#   1. Bump [workspace.package] version in Cargo.toml; update README/docs.
+#   2. git tag v0.1.0 && git push origin v0.1.0
+#   3. Create the GitHub Release for the tag (or let the tag push do it) — the
+#      matrix uploads each archive to it.
+name: Release binaries
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  # Gate the release on the same unit + extension-integration suite as push/PR.
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  # Assert the tag matches the workspace version, so the binary's units_version()
+  # equals the release tag. Skipped on a tag-less manual dispatch.
+  version-check:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ci/check-version.sh "${GITHUB_REF_NAME}"
+
+  upload:
+    name: ${{ matrix.target }}
+    needs: [ci, version-check]
+    # Only attach assets when building from a tag (there is no Release otherwise).
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write     # upload release assets
+      id-token: write     # keyless cosign sign-blob + provenance (sigstore OIDC)
+      attestations: write # SLSA build-provenance attestation
+    strategy:
+      fail-fast: false
+      matrix:
+        # `ext` is the archive extension taiki-e produces for that OS (tar.gz on
+        # Unix, zip on Windows); the sign + attest steps use it to target the one
+        # archive exactly, not the .sha256 / .cosign.bundle sidecars next to it.
+        include:
+          - { os: ubuntu-latest,     target: x86_64-unknown-linux-gnu,  ext: tar.gz }
+          - { os: ubuntu-24.04-arm,  target: aarch64-unknown-linux-gnu, ext: tar.gz }
+          - { os: macos-13,          target: x86_64-apple-darwin,       ext: tar.gz }
+          - { os: macos-14,          target: aarch64-apple-darwin,      ext: tar.gz }
+          - { os: windows-latest,    target: x86_64-pc-windows-msvc,    ext: zip }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      # Builds the binary for the target, packs it into a tar.gz (Unix) / zip
+      # (Windows) archive alongside README + LICENSE, emits a .sha256 sidecar,
+      # and uploads everything to the Release for this tag. The archive is left
+      # in the workspace so the next step can sign it.
+      - name: Build and upload binary
+        uses: taiki-e/upload-rust-binary-action@v1
+        with:
+          bin: units-worker
+          target: ${{ matrix.target }}
+          archive: units-worker-$tag-$target
+          include: README.md,LICENSE
+          checksum: sha256
+          locked: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      # Keyless sigstore signature for each archive, mirroring the container
+      # image's `cosign sign`. `sign-blob` uses the job's OIDC token (Fulcio
+      # cert + Rekor transparency log — no stored key) and writes a self-
+      # contained `.cosign.bundle` (signature + cert + log entry), which we
+      # attach to the Release next to the archive. Verify with:
+      #   cosign verify-blob --bundle units-worker-<tag>-<target>.<ext>.cosign.bundle \
+      #     --certificate-identity-regexp '^https://github\.com/Query-farm/vgi-units/\.github/workflows/release\.yml@' \
+      #     --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+      #     units-worker-<tag>-<target>.<ext>
+      - name: Sign archive with cosign (keyless) and attach bundle
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          shopt -s extglob
+          # Match the produced archives only (not the .sha256 / .bundle sidecars).
+          for f in units-worker-*.@(tar.gz|zip); do
+            echo "::group::sign $f"
+            cosign sign-blob --yes --bundle "${f}.cosign.bundle" "$f"
+            gh release upload "${GITHUB_REF_NAME}" "${f}.cosign.bundle" --clobber
+            echo "::endgroup::"
+          done
+
+      # SLSA build-provenance attestation for the archive — keyless/sigstore,
+      # stored in GitHub's attestation API (not a release asset). Attests that
+      # THIS workflow built the archive from this commit. Verify with:
+      #   gh attestation verify units-worker-<tag>-<target>.<ext> --repo Query-farm/vgi-units
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: units-worker-${{ github.ref_name }}-${{ matrix.target }}.${{ matrix.ext }}
