@@ -10,7 +10,11 @@ on:
   workflow_call:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # Include github.workflow so a direct CI run and the `uses:`-embedded CI jobs
+  # of release.yml / docker-publish.yml land in DISTINCT groups. Sharing one
+  # group made the two tag-triggered callers cancel each other (cancel-in-
+  # progress). In a reusable workflow github.workflow resolves to the CALLER.
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
