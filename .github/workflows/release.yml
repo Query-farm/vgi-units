@@ -76,11 +76,17 @@ jobs:
         # `ext` is the archive extension taiki-e produces for that OS (tar.gz on
         # Unix, zip on Windows); the sign + attest steps use it to target the one
         # archive exactly, not the .sha256 / .cosign.bundle sidecars next to it.
+        # Both macOS targets build on a current Apple-Silicon runner (macos-15).
+        # GitHub's recent macOS images are all arm64 — macos-13 was the last
+        # Intel image and its runners are now scarce/deprecated — so the Intel
+        # (x86_64-apple-darwin) binary is CROSS-compiled here via `--target`
+        # (same macOS SDK, system linker handles both arches; the taiki-e action
+        # just needs the rustup target, installed below). aarch64 builds native.
         include:
           - { os: ubuntu-latest,     target: x86_64-unknown-linux-gnu,  ext: tar.gz }
           - { os: ubuntu-24.04-arm,  target: aarch64-unknown-linux-gnu, ext: tar.gz }
-          - { os: macos-13,          target: x86_64-apple-darwin,       ext: tar.gz }
-          - { os: macos-14,          target: aarch64-apple-darwin,      ext: tar.gz }
+          - { os: macos-15,          target: x86_64-apple-darwin,       ext: tar.gz }
+          - { os: macos-15,          target: aarch64-apple-darwin,      ext: tar.gz }
           - { os: windows-latest,    target: x86_64-pc-windows-msvc,    ext: zip }
     runs-on: ${{ matrix.os }}
     steps:
