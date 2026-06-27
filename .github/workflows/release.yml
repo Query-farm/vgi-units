@@ -114,8 +114,8 @@ jobs:
           bin: units-worker
           target: ${{ matrix.target }}
           # DuckDB platform name in the asset, not the Rust target triple, e.g.
-          # units-worker-v0.1.0-linux_amd64.tar.gz. ($tag is taiki-e's tag token.)
-          archive: units-worker-$tag-${{ matrix.platform }}
+          # vgi-units-v0.1.0-linux_amd64.tar.gz. ($tag is taiki-e's tag token.)
+          archive: vgi-units-$tag-${{ matrix.platform }}
           include: README.md,LICENSE
           checksum: sha256
           locked: true
@@ -130,10 +130,10 @@ jobs:
       # cert + Rekor transparency log — no stored key) and writes a self-
       # contained `.cosign.bundle` (signature + cert + log entry), which we
       # attach to the Release next to the archive. Verify with:
-      #   cosign verify-blob --bundle units-worker-<tag>-<platform>.<ext>.cosign.bundle \
+      #   cosign verify-blob --bundle vgi-units-<tag>-<platform>.<ext>.cosign.bundle \
       #     --certificate-identity-regexp '^https://github\.com/Query-farm/vgi-units/\.github/workflows/release\.yml@' \
       #     --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-      #     units-worker-<tag>-<platform>.<ext>
+      #     vgi-units-<tag>-<platform>.<ext>
       - name: Sign archive with cosign (keyless) and attach bundle
         shell: bash
         env:
@@ -143,7 +143,7 @@ jobs:
           shopt -s nullglob
           shopt -s extglob
           # Match the produced archives only (not the .sha256 / .bundle sidecars).
-          for f in units-worker-*.@(tar.gz|zip); do
+          for f in vgi-units-*.@(tar.gz|zip); do
             echo "::group::sign $f"
             cosign sign-blob --yes --bundle "${f}.cosign.bundle" "$f"
             gh release upload "${GITHUB_REF_NAME}" "${f}.cosign.bundle" --clobber
@@ -153,8 +153,8 @@ jobs:
       # SLSA build-provenance attestation for the archive — keyless/sigstore,
       # stored in GitHub's attestation API (not a release asset). Attests that
       # THIS workflow built the archive from this commit. Verify with:
-      #   gh attestation verify units-worker-<tag>-<platform>.<ext> --repo Query-farm/vgi-units
+      #   gh attestation verify vgi-units-<tag>-<platform>.<ext> --repo Query-farm/vgi-units
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: units-worker-${{ github.ref_name }}-${{ matrix.platform }}.${{ matrix.ext }}
+          subject-path: vgi-units-${{ github.ref_name }}-${{ matrix.platform }}.${{ matrix.ext }}
