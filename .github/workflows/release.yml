@@ -40,9 +40,30 @@ jobs:
       - uses: actions/checkout@v4
       - run: ci/check-version.sh "${GITHUB_REF_NAME}"
 
+  # taiki-e/upload-rust-binary-action uploads to an EXISTING Release; a tag push
+  # alone doesn't create one. Create it once (idempotent) before the matrix so
+  # every target has somewhere to upload.
+  create-release:
+    needs: [ci, version-check]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create the GitHub Release if it doesn't exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "${GITHUB_REF_NAME}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release ${GITHUB_REF_NAME} already exists."
+          else
+            gh release create "${GITHUB_REF_NAME}" --repo "$GITHUB_REPOSITORY" \
+              --title "${GITHUB_REF_NAME}" --generate-notes
+          fi
+
   upload:
     name: ${{ matrix.target }}
-    needs: [ci, version-check]
+    needs: [ci, version-check, create-release]
     # Only attach assets when building from a tag (there is no Release otherwise).
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
