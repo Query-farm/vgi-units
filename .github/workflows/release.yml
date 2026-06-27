@@ -73,8 +73,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # `ext` is the archive extension taiki-e produces for that OS (tar.gz on
-        # Unix, zip on Windows); the sign + attest steps use it to target the one
+        # `platform` is the DuckDB platform name (duckdb_platform()) used in the
+        # asset names, so the binaries match the convention DuckDB itself uses
+        # for extension distribution (linux_amd64, osx_arm64, …). `ext` is the
+        # archive extension taiki-e produces for that OS (tar.gz on Unix, zip on
+        # Windows); the sign + attest steps use platform+ext to target the one
         # archive exactly, not the .sha256 / .cosign.bundle sidecars next to it.
         # Both macOS targets build on a current Apple-Silicon runner (macos-15).
         # GitHub's recent macOS images are all arm64 — macos-13 was the last
@@ -83,11 +86,11 @@ jobs:
         # (same macOS SDK, system linker handles both arches; the taiki-e action
         # just needs the rustup target, installed below). aarch64 builds native.
         include:
-          - { os: ubuntu-latest,     target: x86_64-unknown-linux-gnu,  ext: tar.gz }
-          - { os: ubuntu-24.04-arm,  target: aarch64-unknown-linux-gnu, ext: tar.gz }
-          - { os: macos-15,          target: x86_64-apple-darwin,       ext: tar.gz }
-          - { os: macos-15,          target: aarch64-apple-darwin,      ext: tar.gz }
-          - { os: windows-latest,    target: x86_64-pc-windows-msvc,    ext: zip }
+          - { os: ubuntu-latest,     target: x86_64-unknown-linux-gnu,  platform: linux_amd64,   ext: tar.gz }
+          - { os: ubuntu-24.04-arm,  target: aarch64-unknown-linux-gnu, platform: linux_arm64,   ext: tar.gz }
+          - { os: macos-15,          target: x86_64-apple-darwin,       platform: osx_amd64,     ext: tar.gz }
+          - { os: macos-15,          target: aarch64-apple-darwin,      platform: osx_arm64,     ext: tar.gz }
+          - { os: windows-latest,    target: x86_64-pc-windows-msvc,    platform: windows_amd64, ext: zip }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -110,7 +113,9 @@ jobs:
         with:
           bin: units-worker
           target: ${{ matrix.target }}
-          archive: units-worker-$tag-$target
+          # DuckDB platform name in the asset, not the Rust target triple, e.g.
+          # units-worker-v0.1.0-linux_amd64.tar.gz. ($tag is taiki-e's tag token.)
+          archive: units-worker-$tag-${{ matrix.platform }}
           include: README.md,LICENSE
           checksum: sha256
           locked: true
@@ -125,10 +130,10 @@ jobs:
       # cert + Rekor transparency log — no stored key) and writes a self-
       # contained `.cosign.bundle` (signature + cert + log entry), which we
       # attach to the Release next to the archive. Verify with:
-      #   cosign verify-blob --bundle units-worker-<tag>-<target>.<ext>.cosign.bundle \
+      #   cosign verify-blob --bundle units-worker-<tag>-<platform>.<ext>.cosign.bundle \
       #     --certificate-identity-regexp '^https://github\.com/Query-farm/vgi-units/\.github/workflows/release\.yml@' \
       #     --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-      #     units-worker-<tag>-<target>.<ext>
+      #     units-worker-<tag>-<platform>.<ext>
       - name: Sign archive with cosign (keyless) and attach bundle
         shell: bash
         env:
@@ -148,8 +153,8 @@ jobs:
       # SLSA build-provenance attestation for the archive — keyless/sigstore,
       # stored in GitHub's attestation API (not a release asset). Attests that
       # THIS workflow built the archive from this commit. Verify with:
-      #   gh attestation verify units-worker-<tag>-<target>.<ext> --repo Query-farm/vgi-units
+      #   gh attestation verify units-worker-<tag>-<platform>.<ext> --repo Query-farm/vgi-units
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: units-worker-${{ github.ref_name }}-${{ matrix.target }}.${{ matrix.ext }}
+          subject-path: units-worker-${{ github.ref_name }}-${{ matrix.platform }}.${{ matrix.ext }}
