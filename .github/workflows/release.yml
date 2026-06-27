@@ -76,9 +76,10 @@ jobs:
         # `platform` is the DuckDB platform name (duckdb_platform()) used in the
         # asset names, so the binaries match the convention DuckDB itself uses
         # for extension distribution (linux_amd64, osx_arm64, …). `ext` is the
-        # archive extension taiki-e produces for that OS (tar.gz on Unix, zip on
-        # Windows); the sign + attest steps use platform+ext to target the one
-        # archive exactly, not the .sha256 / .cosign.bundle sidecars next to it.
+        # archive extension — tar.gz on EVERY platform (Windows included): the
+        # vgi client that consumes these only handles .tar.gz, not .zip. The
+        # sign + attest steps use platform+ext to target the one archive exactly,
+        # not the .sha256 / .cosign.bundle sidecars next to it.
         # Both macOS targets build on a current Apple-Silicon runner (macos-15).
         # GitHub's recent macOS images are all arm64 — macos-13 was the last
         # Intel image and its runners are now scarce/deprecated — so the Intel
@@ -90,7 +91,7 @@ jobs:
           - { os: ubuntu-24.04-arm,  target: aarch64-unknown-linux-gnu, platform: linux_arm64,   ext: tar.gz }
           - { os: macos-15,          target: x86_64-apple-darwin,       platform: osx_amd64,     ext: tar.gz }
           - { os: macos-15,          target: aarch64-apple-darwin,      platform: osx_arm64,     ext: tar.gz }
-          - { os: windows-latest,    target: x86_64-pc-windows-msvc,    platform: windows_amd64, ext: zip }
+          - { os: windows-latest,    target: x86_64-pc-windows-msvc,    platform: windows_amd64, ext: tar.gz }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -104,10 +105,11 @@ jobs:
         with:
           key: ${{ matrix.target }}
 
-      # Builds the binary for the target, packs it into a tar.gz (Unix) / zip
-      # (Windows) archive alongside README + LICENSE, emits a .sha256 sidecar,
-      # and uploads everything to the Release for this tag. The archive is left
-      # in the workspace so the next step can sign it.
+      # Builds the binary for the target, packs it into a .tar.gz archive (on
+      # ALL platforms — `tar: all` + `zip: none` overrides the action's default
+      # of zip-on-Windows, since the vgi client only reads .tar.gz), alongside
+      # README + LICENSE, emits a .sha256 sidecar, and uploads everything to the
+      # Release. The archive is left in the workspace so the next step signs it.
       - name: Build and upload binary
         uses: taiki-e/upload-rust-binary-action@v1
         with:
@@ -116,6 +118,8 @@ jobs:
           # DuckDB platform name in the asset, not the Rust target triple, e.g.
           # vgi-units-v0.1.0-linux_amd64.tar.gz. ($tag is taiki-e's tag token.)
           archive: vgi-units-$tag-${{ matrix.platform }}
+          tar: all
+          zip: none
           include: README.md,LICENSE
           checksum: sha256
           locked: true
@@ -141,9 +145,9 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          shopt -s extglob
           # Match the produced archives only (not the .sha256 / .bundle sidecars).
-          for f in vgi-units-*.@(tar.gz|zip); do
+          # All platforms ship .tar.gz now (Windows included).
+          for f in vgi-units-*.tar.gz; do
             echo "::group::sign $f"
             cosign sign-blob --yes --bundle "${f}.cosign.bundle" "$f"
             gh release upload "${GITHUB_REF_NAME}" "${f}.cosign.bundle" --clobber
