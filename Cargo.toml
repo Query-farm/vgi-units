@@ -11,14 +11,20 @@ authors = ["Query Farm LLC <hello@query.farm>"]
 repository = "https://github.com/Query-farm/vgi-units"
 
 [workspace.dependencies]
-# VGI Rust SDK (worker side), published on crates.io. Pulls in vgi-rpc 0.5 and
+# VGI Rust SDK (worker side), published on crates.io. Pulls in vgi-rpc 0.7 and
 # arrow 59 transitively; keep arrow/vgi-rpc here in lockstep with vgi's pins so a
 # single arrow/vgi-rpc resolves.
-vgi = "0.9.1"
-vgi-rpc = { version = "0.5.0", default-features = false, features = ["macros", "http"] }
+vgi = "0.9.4"
+vgi-rpc = { version = "0.7.0", default-features = false, features = ["macros", "http"] }
 arrow-array = "59"
 arrow-buffer = "59"
 arrow-schema = "59"
 
 [profile.release]
 opt-level = 2
+
+# The published vgi 0.9.4 predates `catalog_copy_from_formats`, which the current
+# community vgi DuckDB extension calls on attach. Track git main (same 0.9.4
+# version, with the method) until a fixed crate is published.
+[patch.crates-io]
+vgi = { git = "https://github.com/Query-farm/vgi-rust", branch = "main" }
