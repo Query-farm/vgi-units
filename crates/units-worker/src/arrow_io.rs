@@ -132,6 +132,8 @@ pub mod test_support {
             attach_opaque_data: None,
             at_unit: None,
             at_value: None,
+            // COPY ... FROM context — never a scalar/table call in this worker.
+            copy_from: None,
         }
     }
 
