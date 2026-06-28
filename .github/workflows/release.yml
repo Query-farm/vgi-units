@@ -38,7 +38,7 @@ jobs:
       contents: write     # create Release + upload assets
       id-token: write     # keyless cosign sign-blob + provenance (sigstore OIDC)
       attestations: write # SLSA build-provenance attestation
-    uses: Query-farm/vgi-actions/.github/workflows/binary-release.yml@v1
+    uses: Query-farm/vgi-actions/.github/workflows/rust-release.yml@v1
     secrets: inherit
     with:
       bin: units-worker
