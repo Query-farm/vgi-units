@@ -1,21 +1,22 @@
 # Copyright 2026 Query Farm LLC - https://query.farm
 #
-# Build standalone `units-worker` binaries for every supported platform and
-# attach them (as compressed archives + SHA256 checksums) to the GitHub Release
-# for a `vX.Y.Z` tag. This is the on-host distribution path: download, unpack,
-# and use the binary directly as a DuckDB vgi LOCATION
+# Build the `units-worker` binary for every supported platform and attach the
+# archives (+ SHA256 + keyless cosign signature + SLSA provenance) to the GitHub
+# Release for a vX.Y.Z tag. The heavy lifting lives in the shared reusable
+# workflow Query-farm/vgi-actions/binary-release.yml; this file gates on the
+# repo's own CI suite and supplies the worker-specific inputs.
+#
+# Assets are named vgi-units-<tag>-<duckdb_platform>.tar.gz (linux_amd64,
+# linux_arm64, osx_amd64, osx_arm64, windows_amd64 — .tar.gz on every platform,
+# since the vgi client only reads .tar.gz). The executable inside each archive
+# is `units-worker`, used directly as a DuckDB vgi LOCATION:
 #   ATTACH 'units' (TYPE vgi, LOCATION '/path/to/units-worker');
 # (the container image — docker-publish.yml — is the server/Fly.io path.)
 #
-# Each target builds on its NATIVE runner (no cross-compilation), so the binaries
-# are exactly what that platform produces. The release is gated on the full CI
-# suite and a tag/version match.
-#
 # Release flow:
-#   1. Bump [workspace.package] version in Cargo.toml; update README/docs.
-#   2. git tag v0.1.0 && git push origin v0.1.0
-#   3. Create the GitHub Release for the tag (or let the tag push do it) — the
-#      matrix uploads each archive to it.
+#   1. Bump [workspace.package] version in Cargo.toml; sync Cargo.lock.
+#   2. git tag vX.Y.Z && git push origin vX.Y.Z
+# The reusable workflow creates the Release (idempotent) and uploads every asset.
 name: Release binaries
 
 on:
@@ -31,134 +32,15 @@ jobs:
   ci:
     uses: ./.github/workflows/ci.yml
 
-  # Assert the tag matches the workspace version, so the binary's units_version()
-  # equals the release tag. Skipped on a tag-less manual dispatch.
-  version-check:
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: ci/check-version.sh "${GITHUB_REF_NAME}"
-
-  # taiki-e/upload-rust-binary-action uploads to an EXISTING Release; a tag push
-  # alone doesn't create one. Create it once (idempotent) before the matrix so
-  # every target has somewhere to upload.
-  create-release:
-    needs: [ci, version-check]
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+  release:
+    needs: [ci]
     permissions:
-      contents: write
-    steps:
-      - name: Create the GitHub Release if it doesn't exist
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if gh release view "${GITHUB_REF_NAME}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release ${GITHUB_REF_NAME} already exists."
-          else
-            gh release create "${GITHUB_REF_NAME}" --repo "$GITHUB_REPOSITORY" \
-              --title "${GITHUB_REF_NAME}" --generate-notes
-          fi
-
-  upload:
-    name: ${{ matrix.target }}
-    needs: [ci, version-check, create-release]
-    # Only attach assets when building from a tag (there is no Release otherwise).
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write     # upload release assets
+      contents: write     # create Release + upload assets
       id-token: write     # keyless cosign sign-blob + provenance (sigstore OIDC)
       attestations: write # SLSA build-provenance attestation
-    strategy:
-      fail-fast: false
-      matrix:
-        # `platform` is the DuckDB platform name (duckdb_platform()) used in the
-        # asset names, so the binaries match the convention DuckDB itself uses
-        # for extension distribution (linux_amd64, osx_arm64, …). `ext` is the
-        # archive extension — tar.gz on EVERY platform (Windows included): the
-        # vgi client that consumes these only handles .tar.gz, not .zip. The
-        # sign + attest steps use platform+ext to target the one archive exactly,
-        # not the .sha256 / .cosign.bundle sidecars next to it.
-        # Both macOS targets build on a current Apple-Silicon runner (macos-15).
-        # GitHub's recent macOS images are all arm64 — macos-13 was the last
-        # Intel image and its runners are now scarce/deprecated — so the Intel
-        # (x86_64-apple-darwin) binary is CROSS-compiled here via `--target`
-        # (same macOS SDK, system linker handles both arches; the taiki-e action
-        # just needs the rustup target, installed below). aarch64 builds native.
-        include:
-          - { os: ubuntu-latest,     target: x86_64-unknown-linux-gnu,  platform: linux_amd64,   ext: tar.gz }
-          - { os: ubuntu-24.04-arm,  target: aarch64-unknown-linux-gnu, platform: linux_arm64,   ext: tar.gz }
-          - { os: macos-15,          target: x86_64-apple-darwin,       platform: osx_amd64,     ext: tar.gz }
-          - { os: macos-15,          target: aarch64-apple-darwin,      platform: osx_arm64,     ext: tar.gz }
-          - { os: windows-latest,    target: x86_64-pc-windows-msvc,    platform: windows_amd64, ext: tar.gz }
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: ${{ matrix.target }}
-
-      # Builds the binary for the target, packs it into a .tar.gz archive (on
-      # ALL platforms — `tar: all` + `zip: none` overrides the action's default
-      # of zip-on-Windows, since the vgi client only reads .tar.gz), alongside
-      # README + LICENSE, emits a .sha256 sidecar, and uploads everything to the
-      # Release. The archive is left in the workspace so the next step signs it.
-      - name: Build and upload binary
-        uses: taiki-e/upload-rust-binary-action@v1
-        with:
-          bin: units-worker
-          target: ${{ matrix.target }}
-          # DuckDB platform name in the asset, not the Rust target triple, e.g.
-          # vgi-units-v0.1.0-linux_amd64.tar.gz. ($tag is taiki-e's tag token.)
-          archive: vgi-units-$tag-${{ matrix.platform }}
-          tar: all
-          zip: none
-          include: README.md,LICENSE
-          checksum: sha256
-          locked: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install cosign
-        uses: sigstore/cosign-installer@v3
-
-      # Keyless sigstore signature for each archive, mirroring the container
-      # image's `cosign sign`. `sign-blob` uses the job's OIDC token (Fulcio
-      # cert + Rekor transparency log — no stored key) and writes a self-
-      # contained `.cosign.bundle` (signature + cert + log entry), which we
-      # attach to the Release next to the archive. Verify with:
-      #   cosign verify-blob --bundle vgi-units-<tag>-<platform>.<ext>.cosign.bundle \
-      #     --certificate-identity-regexp '^https://github\.com/Query-farm/vgi-units/\.github/workflows/release\.yml@' \
-      #     --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-      #     vgi-units-<tag>-<platform>.<ext>
-      - name: Sign archive with cosign (keyless) and attach bundle
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          # Match the produced archives only (not the .sha256 / .bundle sidecars).
-          # All platforms ship .tar.gz now (Windows included).
-          for f in vgi-units-*.tar.gz; do
-            echo "::group::sign $f"
-            cosign sign-blob --yes --bundle "${f}.cosign.bundle" "$f"
-            gh release upload "${GITHUB_REF_NAME}" "${f}.cosign.bundle" --clobber
-            echo "::endgroup::"
-          done
-
-      # SLSA build-provenance attestation for the archive — keyless/sigstore,
-      # stored in GitHub's attestation API (not a release asset). Attests that
-      # THIS workflow built the archive from this commit. Verify with:
-      #   gh attestation verify vgi-units-<tag>-<platform>.<ext> --repo Query-farm/vgi-units
-      - name: Attest build provenance
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-path: vgi-units-${{ github.ref_name }}-${{ matrix.platform }}.${{ matrix.ext }}
+    uses: Query-farm/vgi-actions/.github/workflows/binary-release.yml@v1
+    secrets: inherit
+    with:
+      bin: units-worker
+      asset_prefix: vgi-units
+      version_check_cmd: ci/check-version.sh
