@@ -66,17 +66,47 @@ fn catalog_metadata(name: &str) -> CatalogModel {
             ),
             (
                 "vgi.doc_md".to_string(),
-                "# units\n\nRuntime, string-driven physical-unit conversion and dimensional \
-                 analysis over Apache Arrow. Unlike compile-time-typed unit libraries, units are \
-                 named by ordinary strings (`'mi'`, `'GiB'`, `'°C'`) resolved at query time, so \
-                 you can convert and analyse quantities directly in SQL.\n\nA curated table maps \
-                 each unit to a `(dimension, factor, offset)` triple; conversion is an affine \
-                 round-trip through the SI base unit of the dimension, covering length, mass, \
-                 time, energy, temperature, data sizes, and more.\n\n**Scalars:** `convert` \
-                 (between two units), `to_base` (to the SI base unit), `dimension` (a unit's \
-                 dimension), `compatible` (do two units share a dimension?), `parse_quantity` \
-                 (split `'5 km'` into value + unit), and `units_version`.\n\n**Table:** \
-                 `supported_units` lists every recognized unit with its dimension and base unit."
+                "# Units — Physical Unit Conversion & Dimensional Analysis in SQL\n\n\
+                 **Convert physical quantities between units and run dimensional analysis \
+                 directly in DuckDB SQL** — length, mass, time, energy, temperature, pressure, \
+                 data sizes, and more, all resolved at query time. The `units` worker brings \
+                 runtime, string-driven unit conversion to your queries: units are named by \
+                 ordinary strings (`'mi'`, `'GiB'`, `'°C'`, `'kWh'`), so you can normalize \
+                 measurements, check that two quantities are comparable, and reduce values to \
+                 their SI base unit without leaving SQL.\n\n\
+                 This extension is for data engineers, analysts, and scientists who deal with \
+                 messy, mixed-unit measurement data — energy bills in kWh, distances in miles \
+                 and kilometers, storage in GiB and GB, sensor readings in mixed temperature \
+                 scales. Instead of hard-coding conversion factors into every query or pipeline, \
+                 you call a single well-tested function and get consistent, documented results. \
+                 Because unit names are plain strings evaluated per row, it works naturally over \
+                 columns of dirty real-world data, returning `NULL` for unrecognized units rather \
+                 than aborting a scan.\n\n\
+                 Under the hood the worker is powered by a **curated internal unit table** rather \
+                 than an external dependency: each unit string maps to a `(dimension, factor, \
+                 offset)` triple, and every conversion is an exact affine round-trip through the \
+                 SI base unit of its dimension (`base = value * factor + offset`). Offsets are \
+                 used only by the temperature scales (°C/°F/K/°R) so that 0 °C = 273.15 K = 32 °F \
+                 comes out right; all other factors are the exact agreed SI constants (e.g. inch \
+                 = 0.0254 m, pound = 0.45359237 kg, atm = 101325 Pa, calorie = 4.184 J, IEC \
+                 binary prefixes as 1024ⁿ vs decimal 1000ⁿ). The factors follow the official SI \
+                 definitions maintained by the [BIPM](https://www.bipm.org/en/measurement-units) \
+                 and the [NIST reference on constants, units, and \
+                 uncertainty](https://physics.nist.gov/cuu/Units/).\n\n\
+                 **SQL use cases & function surface.** The scalar functions are `convert(value, \
+                 from, to)` (convert between two units of the same dimension), `to_base(value, \
+                 unit)` (express a value in the SI base unit of its dimension), `dimension(unit)` \
+                 (look up a unit's physical dimension), `compatible(a, b)` (test whether two \
+                 units share a dimension and can be converted), `parse_quantity('5 km')` (split a \
+                 quantity string into a `STRUCT(value, unit)`), and `units_version()`. The \
+                 `supported_units` table function lists every recognized unit alongside its \
+                 dimension and base unit for discovery. Typical queries: `SELECT convert(100, \
+                 'kWh', 'J')`, `SELECT to_base(1, 'GiB')`, `SELECT compatible('mi', 'kg')`, or \
+                 `SELECT * FROM supported_units() WHERE dimension = 'length'`.\n\n\
+                 The `units` worker is open source and part of the \
+                 [Query.Farm](https://query.farm) VGI ecosystem of DuckDB workers — see the \
+                 [source repository on GitHub](https://github.com/Query-farm/vgi-units) for the \
+                 full unit catalog, conversion-factor provenance, and usage examples."
                     .to_string(),
             ),
             // Fixed agent-suitability suite run by `vgi-lint simulate`. Each

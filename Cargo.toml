@@ -14,7 +14,7 @@ repository = "https://github.com/Query-farm/vgi-units"
 # VGI Rust SDK (worker side), published on crates.io. Pulls in vgi-rpc 0.7 and
 # arrow 59 transitively; keep arrow/vgi-rpc here in lockstep with vgi's pins so a
 # single arrow/vgi-rpc resolves.
-vgi = "0.9.4"
+vgi = "0.9.5"
 vgi-rpc = { version = "0.7.0", default-features = false, features = ["macros", "http"] }
 arrow-array = "59"
 arrow-buffer = "59"
@@ -26,9 +26,3 @@ opt-level = 2
 # published .tar.gz ~5.6MB -> ~4.9MB). The worker has no need for in-binary
 # backtraces in production; build a debug profile locally if you need symbols.
 strip = true
-
-# The published vgi 0.9.4 predates `catalog_copy_from_formats`, which the current
-# community vgi DuckDB extension calls on attach. Track git main (same 0.9.4
-# version, with the method) until a fixed crate is published.
-[patch.crates-io]
-vgi = { git = "https://github.com/Query-farm/vgi-rust", branch = "main" }
