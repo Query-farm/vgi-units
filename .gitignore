@@ -2,3 +2,5 @@
 /build
 **/*.rs.bk
 .DS_Store
+# vgi-lint --ai agent-check response cache
+.vgi-*-cache.json

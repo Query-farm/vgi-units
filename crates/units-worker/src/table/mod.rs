@@ -60,6 +60,8 @@ pub fn supported_units_table() -> CatTable {
         ("domain".to_string(), "units-and-measurement".to_string()),
         ("category".to_string(), "discovery".to_string()),
         ("topic".to_string(), "unit-catalog".to_string()),
+        // VGI413 navigation category — one of the schema's `vgi.categories`.
+        ("vgi.category".to_string(), "Discovery".to_string()),
         (
             "vgi.example_queries".to_string(),
             r#"[

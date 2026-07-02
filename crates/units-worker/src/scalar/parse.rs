@@ -45,6 +45,7 @@ impl ScalarFunction for ParseQuantity {
                  `parse_quantity('5 km')` → `{value: 5.0, unit: 'km'}`.",
                 "parse, parse quantity, split value and unit, extract number, tokenize quantity, \
                  5 km, value unit struct",
+                "Parsing",
                 "scalar/parse.rs",
             ),
             ..Default::default()

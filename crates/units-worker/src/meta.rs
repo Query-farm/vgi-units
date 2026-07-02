@@ -54,7 +54,11 @@ pub fn agent_test_tasks_json(tasks: &[(&str, &str, &str)]) -> String {
     format!("[{}]", items.join(","))
 }
 
-/// Build the four standard per-object discovery/description tags.
+/// Build the standard per-object discovery/description tags.
+///
+/// `category` is the schema navigation section this object belongs to (VGI413);
+/// it must be one of the names declared in the schema's `vgi.categories` registry
+/// (see `catalog_metadata` in `main.rs`).
 ///
 /// `relative_path` is the implementing file relative to `units-worker/src`; it is
 /// retained for call-site documentation but no longer emitted as a per-object
@@ -64,6 +68,7 @@ pub fn object_tags(
     description_llm: &str,
     description_md: &str,
     keywords: &str,
+    category: &str,
     _relative_path: &str,
 ) -> Vec<(String, String)> {
     vec![
@@ -71,5 +76,6 @@ pub fn object_tags(
         ("vgi.doc_llm".to_string(), description_llm.to_string()),
         ("vgi.doc_md".to_string(), description_md.to_string()),
         ("vgi.keywords".to_string(), keywords_json(keywords)),
+        ("vgi.category".to_string(), category.to_string()),
     ]
 }

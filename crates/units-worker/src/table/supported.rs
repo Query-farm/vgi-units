@@ -93,6 +93,7 @@ impl TableFunction for SupportedUnits {
              `unit`, `dimension`, `base_unit`.",
             "supported units, list units, available units, unit catalog, discovery, what units, \
              dimension, base unit",
+            "Discovery",
             "table/supported.rs",
         );
         tags.push((

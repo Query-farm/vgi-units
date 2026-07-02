@@ -43,6 +43,7 @@ impl ScalarFunction for DimensionFn {
                  `dimension('kWh')` → 'energy'.",
                 "dimension, physical dimension, quantity kind, length, mass, time, energy, data, \
                  classify unit, what is this unit",
+                "Analysis",
                 "scalar/analysis.rs",
             ),
             ..Default::default()
@@ -111,6 +112,7 @@ impl ScalarFunction for Compatible {
                  `compatible('mi', 'km')` → true.",
                 "compatible, convertible, same dimension, can convert, comparable units, \
                  dimensional check, validate units",
+                "Analysis",
                 "scalar/analysis.rs",
             ),
             ..Default::default()

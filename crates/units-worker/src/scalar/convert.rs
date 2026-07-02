@@ -53,6 +53,7 @@ impl ScalarFunction for Convert {
                  `convert(26.2, 'mi', 'km')`.",
                 "convert, conversion, unit conversion, change units, miles to km, pounds to kg, \
                  celsius to fahrenheit, length, mass, temperature, scale",
+                "Conversion",
                 "scalar/convert.rs",
             ),
             ..Default::default()
@@ -142,6 +143,7 @@ impl ScalarFunction for ToBase {
                  `to_base(100, 'cm')` → 1.0 (metres).",
                 "to_base, base unit, SI, normalize, canonical unit, metres, kilograms, bytes, \
                  normalise units",
+                "Conversion",
                 "scalar/convert.rs",
             ),
             ..Default::default()

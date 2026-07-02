@@ -32,6 +32,7 @@ impl ScalarFunction for UnitsVersion {
                  diagnostics and confirming which build is attached.",
                 "Return the units worker version string, e.g. `units_version()` → '0.1.0'.",
                 "version, build version, units_version, diagnostics, worker version, semver",
+                "Utility",
                 "scalar/version.rs",
             ),
             ..Default::default()

@@ -93,16 +93,15 @@ fn catalog_metadata(name: &str) -> CatalogModel {
                  definitions maintained by the [BIPM](https://www.bipm.org/en/measurement-units) \
                  and the [NIST reference on constants, units, and \
                  uncertainty](https://physics.nist.gov/cuu/Units/).\n\n\
-                 **SQL use cases & function surface.** The scalar functions are `convert(value, \
-                 from, to)` (convert between two units of the same dimension), `to_base(value, \
-                 unit)` (express a value in the SI base unit of its dimension), `dimension(unit)` \
-                 (look up a unit's physical dimension), `compatible(a, b)` (test whether two \
-                 units share a dimension and can be converted), `parse_quantity('5 km')` (split a \
-                 quantity string into a `STRUCT(value, unit)`), and `units_version()`. The \
-                 `supported_units` table function lists every recognized unit alongside its \
-                 dimension and base unit for discovery. Typical queries: `SELECT convert(100, \
-                 'kWh', 'J')`, `SELECT to_base(1, 'GiB')`, `SELECT compatible('mi', 'kg')`, or \
-                 `SELECT * FROM supported_units() WHERE dimension = 'length'`.\n\n\
+                 **When to reach for it.** Use this worker whenever a query must reconcile \
+                 measurements recorded in different units, confirm that two quantities are even \
+                 comparable before combining them, reduce heterogeneous values to a common SI \
+                 base so they can be aggregated, or turn free-text quantity strings into \
+                 structured numeric values. It fits reporting pipelines that mix imperial and \
+                 metric sources, scientific workloads that must normalize before doing math, and \
+                 data-cleaning steps that quarantine unrecognized units as NULL rather than \
+                 failing. List this catalog's schema to discover the exact functions available \
+                 and the full set of recognized unit strings.\n\n\
                  The `units` worker is open source and part of the \
                  [Query.Farm](https://query.farm) VGI ecosystem of DuckDB workers — see the \
                  [source repository on GitHub](https://github.com/Query-farm/vgi-units) for the \
@@ -204,11 +203,38 @@ fn catalog_metadata(name: &str) -> CatalogModel {
                 ),
                 (
                     "vgi.doc_md".to_string(),
-                    "The single schema for the `units` worker. It holds the unit-conversion and \
-                     dimensional-analysis functions — `convert`, `to_base`, `dimension`, \
-                     `compatible`, `parse_quantity`, `units_version` — plus the `supported_units` \
-                     discovery table listing every recognized unit, its dimension, and base unit."
+                    "# Units — main schema\n\n\
+                     The single namespace for the `units` worker, bringing runtime, \
+                     string-driven physical-unit conversion and dimensional analysis to SQL.\n\n\
+                     Its capabilities are organized into a few areas:\n\n\
+                     - **Conversion** — convert and normalize numeric quantities between units of \
+                     the same dimension, including reduction to the SI base unit.\n\
+                     - **Analysis** — look up a unit's physical dimension and test whether two \
+                     units are compatible for conversion.\n\
+                     - **Parsing** — turn free-text quantity strings such as `5 km` into a \
+                     structured value and unit.\n\
+                     - **Discovery** — browse the catalog of every recognized unit string, its \
+                     dimension, and its SI base unit.\n\n\
+                     Reach for this schema whenever a query must reconcile mixed-unit \
+                     measurements, confirm that two quantities are comparable, or normalize \
+                     values to a common base before aggregating. List the schema to discover the \
+                     exact functions available."
                         .to_string(),
+                ),
+                // VGI413 category registry — an ordered JSON array of
+                // {"name","description"} sections. Every function/table tags
+                // itself with a matching `vgi.category`; these drive the
+                // worker's navigation and listing sections.
+                (
+                    "vgi.categories".to_string(),
+                    r#"[
+  {"name": "Conversion", "description": "Convert and normalize numeric quantities between units of the same physical dimension, including reduction to the SI base unit."},
+  {"name": "Analysis", "description": "Inspect units: look up a unit's physical dimension and test whether two units are compatible for conversion."},
+  {"name": "Parsing", "description": "Parse free-text quantity strings such as '5 km' into a structured value and unit."},
+  {"name": "Discovery", "description": "Explore the catalog of every recognized unit string, its dimension, and its SI base unit."},
+  {"name": "Utility", "description": "Operational helpers such as reporting the running worker version."}
+]"#
+                    .to_string(),
                 ),
                 // VGI506 representative example queries for the schema.
                 (
