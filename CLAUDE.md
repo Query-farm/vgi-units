@@ -24,7 +24,7 @@ crates/units-worker/
   src/lib.rs                        lib target re-exporting `units` for integration tests
   src/units.rs                      PURE engine (no Arrow): table + convert/to_base/dimension/parse + unit tests
   src/arrow_io.rs                   VARCHAR/DOUBLE cell reads + STRUCT type + in-process scalar test harness
-  src/scalar/{convert,analysis,parse,version,mod}.rs   thin Arrow scalar adapters
+  src/scalar/{convert,analysis,parse,mod}.rs   thin Arrow scalar adapters
   src/table/{supported,mod}.rs      thin Arrow table-producer adapter
   tests/conversions.rs              integration tests against known constants
 test/sql/*.test                     haybarn-unittest sqllogictest — authoritative E2E
@@ -98,6 +98,7 @@ CI (`.github/workflows/ci.yml`) runs fmt/clippy/build/test plus a gated
 ## Function surface
 
 Scalars: `convert` (DOUBLE), `to_base` (DOUBLE), `dimension` (VARCHAR),
-`compatible` (BOOLEAN), `parse_quantity` (STRUCT(value, unit)), `units_version`
-(VARCHAR). Table: `supported_units` (unit/dimension/base_unit). 14 dimensions,
-300 unit strings.
+`compatible` (BOOLEAN), `parse_quantity` (STRUCT(value, unit)). Table:
+`supported_units` (unit/dimension/base_unit). The worker version is catalog
+metadata (`implementation_version`), not a scalar. 14 dimensions, 300 unit
+strings.

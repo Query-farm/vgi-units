@@ -96,14 +96,18 @@ impl TableFunction for SupportedUnits {
             "Discovery",
             "table/supported.rs",
         );
+        // Static result schema (VGI321) as the machine-readable JSON array of
+        // {name, type, description} — the successor to the retired
+        // `vgi.result_columns_md` Markdown tag (VGI414). Names/types match the
+        // columns produced by `output_schema()`.
         tags.push((
-            "vgi.result_columns_md".into(),
-            "| column | type | description |\n\
-             |---|---|---|\n\
-             | `unit` | VARCHAR | The unit string, e.g. `km`, `kWh`, `°C`. |\n\
-             | `dimension` | VARCHAR | Physical dimension, e.g. `length`, `energy`. |\n\
-             | `base_unit` | VARCHAR | The SI base unit for the dimension. |"
-                .into(),
+            "vgi.result_columns_schema".into(),
+            r#"[
+  {"name": "unit", "type": "VARCHAR", "description": "The recognized unit string, e.g. 'km', 'kWh', '°C'."},
+  {"name": "dimension", "type": "VARCHAR", "description": "The physical dimension the unit measures, e.g. 'length', 'energy'."},
+  {"name": "base_unit", "type": "VARCHAR", "description": "The SI base unit that all conversions in that dimension pass through, e.g. 'm', 'kg'."}
+]"#
+            .into(),
         ));
         tags.push(("vgi.executable_examples".into(), EXECUTABLE_EXAMPLES.into()));
         FunctionMetadata {

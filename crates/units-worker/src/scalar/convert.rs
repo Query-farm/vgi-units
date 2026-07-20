@@ -16,10 +16,7 @@ use std::sync::Arc;
 use arrow_array::builder::Float64Builder;
 use arrow_array::{ArrayRef, RecordBatch};
 use arrow_schema::DataType;
-use vgi::{
-    ArgSpec, BindParams, BindResponse, FunctionExample, FunctionMetadata, ProcessParams,
-    ScalarFunction,
-};
+use vgi::{ArgSpec, BindParams, BindResponse, FunctionMetadata, ProcessParams, ScalarFunction};
 use vgi_rpc::{Result, RpcError};
 
 use crate::arrow_io::{double_val, text_str};
@@ -38,24 +35,36 @@ impl ScalarFunction for Convert {
                           is unknown; ERROR if the dimensions are incompatible)"
                 .into(),
             return_type: Some(DataType::Float64),
-            examples: vec![FunctionExample {
-                sql: "SELECT units.main.convert(26.2, 'mi', 'km');".into(),
-                description: "Convert a marathon distance from miles to kilometres.".into(),
-                expected_output: None,
-            }],
-            tags: crate::meta::object_tags(
-                "Convert Units",
-                "Convert a numeric value from one unit to another unit of the same physical \
-                 dimension, e.g. miles to kilometres, pounds to kilograms, or °C to °F. Returns \
-                 NULL when either unit string is unknown, and raises an error when the two units \
-                 belong to incompatible dimensions (e.g. km to kg).",
-                "Convert a value between two units of the same dimension, e.g. \
-                 `convert(26.2, 'mi', 'km')`.",
-                "convert, conversion, unit conversion, change units, miles to km, pounds to kg, \
-                 celsius to fahrenheit, length, mass, temperature, scale",
-                "Conversion",
-                "scalar/convert.rs",
-            ),
+            tags: {
+                let mut tags = crate::meta::object_tags(
+                    "Convert Units",
+                    "Convert a numeric value from one unit to another unit of the same physical \
+                     dimension, e.g. miles to kilometres, pounds to kilograms, or °C to °F. \
+                     Returns NULL when either unit string is unknown, and raises an error when \
+                     the two units belong to incompatible dimensions (e.g. km to kg).",
+                    "Convert a value between two units of the same dimension, e.g. \
+                     `convert(26.2, 'mi', 'km')`.",
+                    "convert, conversion, unit conversion, change units, miles to km, pounds to \
+                     kg, celsius to fahrenheit, length, mass, temperature, scale",
+                    "Conversion",
+                    "scalar/convert.rs",
+                );
+                tags.push((
+                    "vgi.example_queries".into(),
+                    crate::meta::example_queries_json(&[
+                        (
+                            "Convert a marathon distance from miles to kilometres.",
+                            "SELECT units.main.convert(26.2, 'mi', 'km') AS km",
+                        ),
+                        (
+                            "Convert a body temperature from Celsius to Fahrenheit (affine, \
+                             offset-aware).",
+                            "SELECT units.main.convert(37, '°C', '°F') AS fahrenheit",
+                        ),
+                    ]),
+                ));
+                tags
+            },
             ..Default::default()
         }
     }
@@ -129,23 +138,35 @@ impl ScalarFunction for ToBase {
                           is unknown)"
                 .into(),
             return_type: Some(DataType::Float64),
-            examples: vec![FunctionExample {
-                sql: "SELECT units.main.to_base(100, 'cm');".into(),
-                description: "Express 100 centimetres in the SI base unit (metres).".into(),
-                expected_output: None,
-            }],
-            tags: crate::meta::object_tags(
-                "Convert to SI Base Unit",
-                "Express a numeric value in the SI base unit of its dimension, e.g. centimetres to \
-                 metres, grams to kilograms, or GiB to bytes. Returns NULL when the unit string is \
-                 unknown.",
-                "Express a value in the SI base unit of its dimension, e.g. \
-                 `to_base(100, 'cm')` → 1.0 (metres).",
-                "to_base, base unit, SI, normalize, canonical unit, metres, kilograms, bytes, \
-                 normalise units",
-                "Conversion",
-                "scalar/convert.rs",
-            ),
+            tags: {
+                let mut tags = crate::meta::object_tags(
+                    "Convert to SI Base Unit",
+                    "Express a numeric value in the SI base unit of its dimension, e.g. \
+                     centimetres to metres, grams to kilograms, or GiB to bytes. Returns NULL \
+                     when the unit string is unknown.",
+                    "Express a value in the SI base unit of its dimension, e.g. \
+                     `to_base(100, 'cm')` → 1.0 (metres).",
+                    "to_base, base unit, SI, normalize, canonical unit, metres, kilograms, bytes, \
+                     normalise units",
+                    "Conversion",
+                    "scalar/convert.rs",
+                );
+                tags.push((
+                    "vgi.example_queries".into(),
+                    crate::meta::example_queries_json(&[
+                        (
+                            "Express 100 centimetres in the SI base unit (metres).",
+                            "SELECT units.main.to_base(100, 'cm') AS metres",
+                        ),
+                        (
+                            "Reduce 1 GiB to bytes so mixed data sizes can be summed on a common \
+                             base.",
+                            "SELECT units.main.to_base(1, 'GiB') AS bytes",
+                        ),
+                    ]),
+                ));
+                tags
+            },
             ..Default::default()
         }
     }

@@ -63,7 +63,10 @@ Scalars (positional-only):
 | `dimension` | `dimension(unit VARCHAR) -> VARCHAR` | `'length'`, `'mass'`, …; NULL if unknown |
 | `compatible` | `compatible(a VARCHAR, b VARCHAR) -> BOOLEAN` | Same dimension? Unknown unit is never compatible |
 | `parse_quantity` | `parse_quantity(text VARCHAR) -> STRUCT(value DOUBLE, unit VARCHAR)` | Parses `"5 km"`, `"3.2kg"`, `"10 m/s"`; NULL if unparseable/unknown |
-| `units_version` | `units_version() -> VARCHAR` | Worker version |
+
+The worker's software version is exposed as catalog metadata
+(`implementation_version`, read via `vgi_catalogs()`) rather than as a scalar
+function.
 
 Table function:
 

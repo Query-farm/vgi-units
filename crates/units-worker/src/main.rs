@@ -100,12 +100,7 @@ fn catalog_metadata(name: &str) -> CatalogModel {
                  structured numeric values. It fits reporting pipelines that mix imperial and \
                  metric sources, scientific workloads that must normalize before doing math, and \
                  data-cleaning steps that quarantine unrecognized units as NULL rather than \
-                 failing. List this catalog's schema to discover the exact functions available \
-                 and the full set of recognized unit strings.\n\n\
-                 The `units` worker is open source and part of the \
-                 [Query.Farm](https://query.farm) VGI ecosystem of DuckDB workers — see the \
-                 [source repository on GitHub](https://github.com/Query-farm/vgi-units) for the \
-                 full unit catalog, conversion-factor provenance, and usage examples."
+                 failing."
                     .to_string(),
             ),
             // Fixed agent-suitability suite run by `vgi-lint simulate`. Each
@@ -152,12 +147,6 @@ fn catalog_metadata(name: &str) -> CatalogModel {
                          is_compatible FROM (VALUES (1, 'mi', 'km'), (2, 'kg', 'lb'), \
                          (3, 'kg', 'm'), (4, 'mi', 'zzz')) AS t(ord, a, b) ORDER BY ord",
                     ),
-                    (
-                        "worker_version",
-                        "What version of the units worker is currently running? Return a single \
-                         row with one column named version.",
-                        "SELECT units.main.units_version() AS version",
-                    ),
                 ]),
             ),
             ("vgi.author".to_string(), "Query.Farm".to_string()),
@@ -176,6 +165,10 @@ fn catalog_metadata(name: &str) -> CatalogModel {
             ),
         ],
         source_url: Some("https://github.com/Query-farm/vgi-units".to_string()),
+        // Surface the running worker's software version as catalog metadata
+        // (read from `vgi_catalogs()` without spending a query) rather than as a
+        // parameterless `units_version()` scalar (VGI328).
+        implementation_version: Some(version().to_string()),
         schemas: vec![CatSchema {
             name: "main".to_string(),
             comment: Some("Unit-conversion and dimensional-analysis functions.".to_string()),
@@ -217,8 +210,7 @@ fn catalog_metadata(name: &str) -> CatalogModel {
                      dimension, and its SI base unit.\n\n\
                      Reach for this schema whenever a query must reconcile mixed-unit \
                      measurements, confirm that two quantities are comparable, or normalize \
-                     values to a common base before aggregating. List the schema to discover the \
-                     exact functions available."
+                     values to a common base before aggregating."
                         .to_string(),
                 ),
                 // VGI413 category registry — an ordered JSON array of
@@ -231,21 +223,42 @@ fn catalog_metadata(name: &str) -> CatalogModel {
   {"name": "Conversion", "description": "Convert and normalize numeric quantities between units of the same physical dimension, including reduction to the SI base unit."},
   {"name": "Analysis", "description": "Inspect units: look up a unit's physical dimension and test whether two units are compatible for conversion."},
   {"name": "Parsing", "description": "Parse free-text quantity strings such as '5 km' into a structured value and unit."},
-  {"name": "Discovery", "description": "Explore the catalog of every recognized unit string, its dimension, and its SI base unit."},
-  {"name": "Utility", "description": "Operational helpers such as reporting the running worker version."}
+  {"name": "Discovery", "description": "Explore the catalog of every recognized unit string, its dimension, and its SI base unit."}
 ]"#
                     .to_string(),
                 ),
-                // VGI506 representative example queries for the schema.
+                // VGI506/VGI515 representative example queries for the schema —
+                // a JSON array of {description, sql} so every example is
+                // self-explanatory.
                 (
                     "vgi.example_queries".to_string(),
-                    "SELECT units.main.convert(26.2, 'mi', 'km');\n\
-                     SELECT units.main.to_base(1, 'GiB');\n\
-                     SELECT units.main.dimension('kWh');\n\
-                     SELECT units.main.compatible('mi', 'km');\n\
-                     SELECT units.main.parse_quantity('5 km');\n\
-                     SELECT * FROM units.main.supported_units() WHERE dimension = 'length';"
-                        .to_string(),
+                    crate::meta::example_queries_json(&[
+                        (
+                            "Convert a marathon distance from miles to kilometres.",
+                            "SELECT units.main.convert(26.2, 'mi', 'km') AS km",
+                        ),
+                        (
+                            "Reduce 1 GiB to bytes via the SI base unit.",
+                            "SELECT units.main.to_base(1, 'GiB') AS bytes",
+                        ),
+                        (
+                            "Look up the physical dimension of a unit.",
+                            "SELECT units.main.dimension('kWh') AS dim",
+                        ),
+                        (
+                            "Check whether two units can be converted between.",
+                            "SELECT units.main.compatible('mi', 'km') AS ok",
+                        ),
+                        (
+                            "Parse a free-text quantity string into a (value, unit) struct.",
+                            "SELECT units.main.parse_quantity('5 km') AS q",
+                        ),
+                        (
+                            "List the recognized units in the length dimension.",
+                            "SELECT unit, base_unit FROM units.main.supported_units \
+                             WHERE dimension = 'length' ORDER BY unit",
+                        ),
+                    ]),
                 ),
             ],
             views: Vec::new(),

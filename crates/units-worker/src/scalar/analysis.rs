@@ -6,10 +6,7 @@ use std::sync::Arc;
 use arrow_array::builder::{BooleanBuilder, StringBuilder};
 use arrow_array::{ArrayRef, RecordBatch};
 use arrow_schema::DataType;
-use vgi::{
-    ArgSpec, BindParams, BindResponse, FunctionExample, FunctionMetadata, ProcessParams,
-    ScalarFunction,
-};
+use vgi::{ArgSpec, BindParams, BindResponse, FunctionMetadata, ProcessParams, ScalarFunction};
 use vgi_rpc::{Result, RpcError};
 
 use crate::arrow_io::text_str;
@@ -29,23 +26,36 @@ impl ScalarFunction for DimensionFn {
                           ('length'|'mass'|'time'|…), or NULL if the unit is unknown"
                 .into(),
             return_type: Some(DataType::Utf8),
-            examples: vec![FunctionExample {
-                sql: "SELECT units.main.dimension('kWh');".into(),
-                description: "Identify the physical dimension of a unit (energy).".into(),
-                expected_output: None,
-            }],
-            tags: crate::meta::object_tags(
-                "Unit Dimension",
-                "Return the physical dimension of a unit as a lowercase name such as 'length', \
-                 'mass', 'time', 'energy', or 'data'. Returns NULL when the unit string is \
-                 unknown.",
-                "Return the physical dimension of a unit, e.g. \
-                 `dimension('kWh')` → 'energy'.",
-                "dimension, physical dimension, quantity kind, length, mass, time, energy, data, \
-                 classify unit, what is this unit",
-                "Analysis",
-                "scalar/analysis.rs",
-            ),
+            tags: {
+                let mut tags = crate::meta::object_tags(
+                    "Unit Dimension",
+                    "Return the physical dimension of a unit as a lowercase name such as \
+                     'length', 'mass', 'time', 'energy', or 'data'. Returns NULL when the unit \
+                     string is unknown.",
+                    "Return the physical dimension of a unit, e.g. \
+                     `dimension('kWh')` → 'energy'.",
+                    "dimension, physical dimension, quantity kind, length, mass, time, energy, \
+                     data, classify unit, what is this unit",
+                    "Analysis",
+                    "scalar/analysis.rs",
+                );
+                tags.push((
+                    "vgi.example_queries".into(),
+                    crate::meta::example_queries_json(&[
+                        (
+                            "Identify the physical dimension of a unit (energy).",
+                            "SELECT units.main.dimension('kWh') AS dim",
+                        ),
+                        (
+                            "Group a column of unit strings by the dimension they measure.",
+                            "SELECT units.main.dimension(u) AS dim, count(*) AS n \
+                             FROM (VALUES ('mi'), ('km'), ('kg'), ('lb')) AS t(u) \
+                             GROUP BY dim ORDER BY dim",
+                        ),
+                    ]),
+                ));
+                tags
+            },
             ..Default::default()
         }
     }
@@ -98,23 +108,35 @@ impl ScalarFunction for Compatible {
                           Unknown units are never compatible"
                 .into(),
             return_type: Some(DataType::Boolean),
-            examples: vec![FunctionExample {
-                sql: "SELECT units.main.compatible('mi', 'km');".into(),
-                description: "Check whether two units can be converted between (true).".into(),
-                expected_output: None,
-            }],
-            tags: crate::meta::object_tags(
-                "Units Compatible?",
-                "Return TRUE when two units share the same physical dimension and can therefore be \
-                 converted between one another (e.g. 'mi' and 'km'), and FALSE otherwise. Unknown \
-                 units are never compatible. Returns NULL when either operand is NULL.",
-                "Check whether two units share a dimension (are convertible), e.g. \
-                 `compatible('mi', 'km')` → true.",
-                "compatible, convertible, same dimension, can convert, comparable units, \
-                 dimensional check, validate units",
-                "Analysis",
-                "scalar/analysis.rs",
-            ),
+            tags: {
+                let mut tags = crate::meta::object_tags(
+                    "Units Compatible?",
+                    "Return TRUE when two units share the same physical dimension and can \
+                     therefore be converted between one another (e.g. 'mi' and 'km'), and FALSE \
+                     otherwise. Unknown units are never compatible. Returns NULL when either \
+                     operand is NULL.",
+                    "Check whether two units share a dimension (are convertible), e.g. \
+                     `compatible('mi', 'km')` → true.",
+                    "compatible, convertible, same dimension, can convert, comparable units, \
+                     dimensional check, validate units",
+                    "Analysis",
+                    "scalar/analysis.rs",
+                );
+                tags.push((
+                    "vgi.example_queries".into(),
+                    crate::meta::example_queries_json(&[
+                        (
+                            "Check whether two units can be converted between (true).",
+                            "SELECT units.main.compatible('mi', 'km') AS ok",
+                        ),
+                        (
+                            "Guard a conversion: only convert rows whose units are compatible.",
+                            "SELECT units.main.compatible('kg', 'lb') AS ok",
+                        ),
+                    ]),
+                ));
+                tags
+            },
             ..Default::default()
         }
     }

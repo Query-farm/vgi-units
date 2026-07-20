@@ -29,6 +29,29 @@ pub fn keywords_json(keywords: &str) -> String {
     format!("[{}]", items.join(","))
 }
 
+/// Encode a list of `(description, sql)` pairs as the `vgi.example_queries` JSON
+/// value the linter expects: a JSON array of `{"description": …, "sql": …}`
+/// objects (VGI502/VGI515). Each example carries a human-readable description so
+/// an agent understands *why* the query is illustrative, not just what it runs.
+pub fn example_queries_json(examples: &[(&str, &str)]) -> String {
+    fn esc(s: &str) -> String {
+        s.replace('\\', "\\\\")
+            .replace('"', "\\\"")
+            .replace('\n', "\\n")
+    }
+    let items: Vec<String> = examples
+        .iter()
+        .map(|(description, sql)| {
+            format!(
+                "{{\"description\":\"{}\",\"sql\":\"{}\"}}",
+                esc(description),
+                esc(sql)
+            )
+        })
+        .collect();
+    format!("[{}]", items.join(","))
+}
+
 /// Build the `vgi.agent_test_tasks` JSON value: a fixed suite of analyst tasks
 /// that `vgi-lint simulate` runs. Each `(name, prompt, reference_sql)` triple
 /// becomes a task object; the `prompt` is shown to the simulated analyst while
