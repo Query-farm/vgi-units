@@ -2026,9 +2026,9 @@ dependencies = [
 
 [[package]]
 name = "vgi-rpc"
-version = "0.21.0"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4832475bde2c889a9c721bdda99a67754e51b24e660334cebdb4e4f6321220d1"
+checksum = "58ac9af5f440337fd2f7745b15137ad689dd6d9aa2dba5f2bb043a651700143c"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -2064,9 +2064,9 @@ dependencies = [
 
 [[package]]
 name = "vgi-rpc-macros"
-version = "0.21.0"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9da4ba10281d80104aef693a2ecb5ccb71d8eaac965a445cb6b2e7c81caab516"
+checksum = "1be75303e4b4feb1b6f97783dc1f45a16c890c4e7c74674379a18f6500717c73"
 dependencies = [
  "proc-macro2",
  "quote",
