@@ -1948,7 +1948,7 @@ dependencies = [
  "env_logger",
  "log",
  "vgi",
- "vgi-rpc",
+ "vgi-rpc 0.25.0",
 ]
 
 [[package]]
@@ -2021,14 +2021,14 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
- "vgi-rpc",
+ "vgi-rpc 0.21.1",
 ]
 
 [[package]]
 name = "vgi-rpc"
-version = "0.21.0"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4832475bde2c889a9c721bdda99a67754e51b24e660334cebdb4e4f6321220d1"
+checksum = "58ac9af5f440337fd2f7745b15137ad689dd6d9aa2dba5f2bb043a651700143c"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -2057,16 +2057,64 @@ dependencies = [
  "tower-http",
  "tracing",
  "url",
- "vgi-rpc-macros",
+ "vgi-rpc-macros 0.21.1",
  "windows-sys 0.59.0",
  "zstd",
 ]
 
 [[package]]
-name = "vgi-rpc-macros"
-version = "0.21.0"
+name = "vgi-rpc"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9da4ba10281d80104aef693a2ecb5ccb71d8eaac965a445cb6b2e7c81caab516"
+checksum = "d8920c56436337d3aeb7fd3321d1a6354da03716b68dc7f340b9bdedc767e48c"
+dependencies = [
+ "arrow-array",
+ "arrow-buffer",
+ "arrow-cast",
+ "arrow-data",
+ "arrow-ipc",
+ "arrow-schema",
+ "arrow-select",
+ "axum",
+ "base64",
+ "bincode",
+ "bytes",
+ "chacha20poly1305",
+ "chrono",
+ "flatbuffers",
+ "flate2",
+ "hmac",
+ "rand",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "sha2",
+ "socket2",
+ "thiserror",
+ "tokio",
+ "tower-http",
+ "tracing",
+ "url",
+ "vgi-rpc-macros 0.25.0",
+ "zstd",
+]
+
+[[package]]
+name = "vgi-rpc-macros"
+version = "0.21.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1be75303e4b4feb1b6f97783dc1f45a16c890c4e7c74674379a18f6500717c73"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "vgi-rpc-macros"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5e458f24f6f85261c617aeec113e91d4010eab08a18ebdc842d1f20be585798"
 dependencies = [
  "proc-macro2",
  "quote",
