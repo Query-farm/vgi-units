@@ -110,7 +110,7 @@ fn catalog_metadata(name: &str) -> CatalogModel {
             ),
             // Fixed agent-suitability suite run by `vgi-lint simulate`. Each
             // prompt is solvable using only the exposed functions; the hidden
-            // reference_sql is the canonical solution used to grade.
+            // reference_sql graders live in vgi-agent-tests.yaml (VGI416).
             (
                 "vgi.agent_test_tasks".to_string(),
                 crate::meta::agent_test_tasks_json(&[
@@ -118,29 +118,23 @@ fn catalog_metadata(name: &str) -> CatalogModel {
                         "kwh_to_joules",
                         "A utility bill lists energy usage as 100 kWh. How many joules is that? \
                          Return a single column named joules.",
-                        "SELECT units.main.convert(100, 'kWh', 'J') AS joules",
                     ),
                     (
                         "richest_dimension",
                         "Which physical dimension does this catalog support the most units for, \
                          and how many units does it have? Return one row with a column named \
                          dimension and a column named n (the unit count).",
-                        "SELECT dimension, count(*) AS n FROM units.main.supported_units \
-                         GROUP BY dimension ORDER BY n DESC, dimension LIMIT 1",
                     ),
                     (
                         "parse_and_normalize_to_si",
                         "I have the measurement written as the text '5 km'. Parse it and express \
                          its value in the SI base unit of its dimension. Return a single column \
                          named base_value.",
-                        "WITH q AS (SELECT units.main.parse_quantity('5 km') AS p) \
-                         SELECT units.main.to_base((p).value, (p).unit) AS base_value FROM q",
                     ),
                     (
                         "dimension_of_unit",
                         "What physical dimension does the unit 'kWh' belong to? Return a single \
                          column named dimension.",
-                        "SELECT units.main.dimension('kWh') AS dimension",
                     ),
                     (
                         "compatible_units_check",
@@ -148,9 +142,6 @@ fn catalog_metadata(name: &str) -> CatalogModel {
                          each pair below, tell me whether the two units can be converted between \
                          each other. Return the pairs in this exact order, with columns unit_a, \
                          unit_b, and is_compatible: (mi, km), (kg, lb), (kg, m), (mi, zzz).",
-                        "SELECT a AS unit_a, b AS unit_b, units.main.compatible(a, b) AS \
-                         is_compatible FROM (VALUES (1, 'mi', 'km'), (2, 'kg', 'lb'), \
-                         (3, 'kg', 'm'), (4, 'mi', 'zzz')) AS t(ord, a, b) ORDER BY ord",
                     ),
                 ]),
             ),
@@ -176,6 +167,7 @@ fn catalog_metadata(name: &str) -> CatalogModel {
         implementation_version: Some(version().to_string()),
         schemas: vec![CatSchema {
             name: "main".to_string(),
+            path: Vec::new(),
             comment: Some("Unit-conversion and dimensional-analysis functions.".to_string()),
             tags: vec![
                 ("vgi.title".to_string(), "Units — main".to_string()),
