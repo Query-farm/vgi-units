@@ -5,6 +5,7 @@ mod supported;
 use std::sync::Arc;
 
 use vgi::catalog::CatTable;
+use vgi::constraints::{constraint_record, ConstraintKind, ConstraintRecord};
 
 /// Build the catalog `CatTable` that exposes `supported_units` as a regular
 /// table (`SELECT * FROM units.main.supported_units`, no parentheses — VGI311),
@@ -26,11 +27,42 @@ pub fn supported_units_table() -> CatTable {
         ),
         Some(crate::units::unit_count() as i64),
     );
-    // `unit` (column 0) is the unique row identity — declare it the primary key
-    // (VGI807) and the table's lone NOT NULL/unique constraint (VGI806).
-    t.primary_key = vec![vec![0]];
-    t.not_null = vec![0, 1, 2];
-    t.unique = vec![vec![0]];
+    // `unit` is the unique row identity — declare it the primary key (VGI807)
+    // and unique; every column is NOT NULL (VGI806). Served nullability is
+    // derived from these records.
+    t.constraints = [
+        ("supported_units.pk", ConstraintKind::PrimaryKey, "unit"),
+        (
+            "supported_units.unit.not_null",
+            ConstraintKind::NotNull,
+            "unit",
+        ),
+        (
+            "supported_units.dimension.not_null",
+            ConstraintKind::NotNull,
+            "dimension",
+        ),
+        (
+            "supported_units.base_unit.not_null",
+            ConstraintKind::NotNull,
+            "base_unit",
+        ),
+        (
+            "supported_units.unit.unique",
+            ConstraintKind::Unique,
+            "unit",
+        ),
+    ]
+    .into_iter()
+    .map(|(id, kind, column)| {
+        constraint_record(
+            &ConstraintRecord::new(&["main"], "supported_units", id, kind)
+                .with_columns(&[&[column]])
+                .enforced(),
+        )
+        .expect("valid constraint record")
+    })
+    .collect();
     t.tags = vec![
         ("vgi.title".to_string(), "Supported Units Catalog".to_string()),
         (
