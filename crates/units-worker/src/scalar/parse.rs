@@ -59,6 +59,7 @@ impl ScalarFunction for ParseQuantity {
                 ));
                 tags
             },
+            return_type: Some(DataType::Struct(quantity_struct_fields())),
             ..Default::default()
         }
     }
