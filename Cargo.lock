@@ -1934,7 +1934,7 @@ checksum = "a2c754d6c33795a1c324727428e5a7dedb5b06195f9890bdbcba760d3e246563"
 
 [[package]]
 name = "units-wasm"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "units-worker",
  "vgi",
@@ -1942,7 +1942,7 @@ dependencies = [
 
 [[package]]
 name = "units-worker"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
