@@ -137,6 +137,7 @@ pub mod test_support {
             tablesample_percentage: None,
             tablesample_seed: None,
             attach_opaque_data: None,
+            transaction_opaque_data: None,
             at_unit: None,
             at_value: None,
             // COPY ... FROM context — never a scalar/table call in this worker.
