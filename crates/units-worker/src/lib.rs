@@ -50,9 +50,11 @@ fn catalog_metadata(name: &str) -> CatalogModel {
             "Runtime, string-driven physical-unit conversion and dimensional analysis.".to_string(),
         ),
         tags: vec![
+            ("vgi.title".to_string(), "Unit Conversion".to_string()),
             (
-                "vgi.title".to_string(),
-                "Unit Conversion & Dimensional Analysis".to_string(),
+                "vgi.subtitle".to_string(),
+                "Convert measurements between units, normalize them to SI, and check that two quantities are comparable."
+                    .to_string(),
             ),
             (
                 "vgi.keywords".to_string(),
@@ -170,7 +172,7 @@ fn catalog_metadata(name: &str) -> CatalogModel {
             path: Vec::new(),
             comment: Some("Unit-conversion and dimensional-analysis functions.".to_string()),
             tags: vec![
-                ("vgi.title".to_string(), "Units — main".to_string()),
+                ("vgi.title".to_string(), "Unit Functions".to_string()),
                 (
                     "vgi.keywords".to_string(),
                     crate::meta::keywords_json(
