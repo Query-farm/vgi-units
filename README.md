@@ -20,7 +20,7 @@ conversion (km → kg) is a clear error rather than a wrong number.
 
 ```sql
 LOAD vgi;
-ATTACH 'units' (TYPE vgi, LOCATION 'github-auto://Query-farm/vgi-units@v0.2.1');
+ATTACH 'units' (TYPE vgi, LOCATION 'github-auto://Query-farm/vgi-units@v0.3.0');
 SET search_path = 'units.main';
 
 SELECT convert(1, 'mi', 'km');        -- 1.609344
@@ -41,7 +41,7 @@ Every [GitHub release](https://github.com/Query-farm/vgi-units/releases) ships a
 INSTALL vgi FROM community;
 LOAD vgi;
 
-ATTACH 'units' AS units (TYPE vgi, LOCATION 'github-auto://Query-farm/vgi-units@v0.2.1');
+ATTACH 'units' AS units (TYPE vgi, LOCATION 'github-auto://Query-farm/vgi-units@v0.3.0');
 
 -- Convert a marathon distance from miles to kilometres.
 SELECT units.main.convert(26.2, 'mi', 'km') AS km;
@@ -50,14 +50,14 @@ SELECT units.main.convert(26.2, 'mi', 'km') AS km;
 SELECT units.main.to_base(1, 'GiB') AS bytes;
 ```
 
-Prebuilt binaries cover macOS (Apple silicon), Linux (x86-64 and arm64) and Windows (x86-64). `github-auto://` needs an explicit release tag; change `@v0.2.1` to move to a newer release.
+Prebuilt binaries cover macOS (Apple silicon), Linux (x86-64 and arm64) and Windows (x86-64). `github-auto://` needs an explicit release tag; change `@v0.3.0` to move to a newer release.
 
 ### Other ways to run it
 
 - **Docker** (the image bundles the worker; needs a container runtime):
 
   ```sql
-  ATTACH 'units' AS units (TYPE vgi, LOCATION 'docker://ghcr.io/query-farm/vgi-units:0.2.1');
+  ATTACH 'units' AS units (TYPE vgi, LOCATION 'docker://ghcr.io/query-farm/vgi-units:0.3.0');
   ```
 
 - **Manual download.** Download the archive for your platform from the [releases page](https://github.com/Query-farm/vgi-units/releases), verify it against its `.sha256` file (a cosign `.cosign.bundle` is published alongside), unpack it, and set `LOCATION` to the path of the extracted worker executable.
