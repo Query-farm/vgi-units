@@ -63,6 +63,10 @@ pub fn supported_units_table() -> CatTable {
         .expect("valid constraint record")
     })
     .collect();
+    // Protocol 3.3 hides a table's scan function (table_only) by default; the
+    // README and test suite document the `supported_units()` call form, so keep
+    // it callable alongside the bare table.
+    t.expose_scan = true;
     t.tags = vec![
         ("vgi.title".to_string(), "Supported Units Catalog".to_string()),
         (

@@ -18,7 +18,7 @@ clearest fit and lets us document every factor's source.
 ## Layout
 
 ```
-Cargo.toml                          workspace; pins vgi = "0.50.0", arrow 59.2
+Cargo.toml                          workspace; pins vgi = "0.51.0", arrow 59.2
 crates/units-worker/
   src/main.rs                       Worker::new(); registers scalars + table
   src/lib.rs                        lib target re-exporting `units` for integration tests
