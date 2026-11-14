@@ -211,3 +211,7 @@ Written by [Query.Farm](https://query.farm).
 
 Copyright 2026 Query Farm LLC - https://query.farm
 
+
+## Notebooks
+
+See the [executed mixed-unit reporting notebook](notebooks/README.md) for validation, conversions and temperature differences through SQL.
