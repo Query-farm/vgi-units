@@ -1,0 +1,28 @@
+{
+  "query": "SELECT database_name,comment,tags FROM duckdb_databases() WHERE database_name='units'",
+  "columns": [
+    "database_name",
+    "comment",
+    "tags"
+  ],
+  "rows": [
+    [
+      "units",
+      "Runtime, string-driven physical-unit conversion and dimensional analysis.",
+      {
+        "vgi.agent_test_tasks": "[{\"name\":\"kwh_to_joules\",\"prompt\":\"A utility bill lists energy usage as 100 kWh. How many joules is that? Return a single column named joules.\"},{\"name\":\"richest_dimension\",\"prompt\":\"Which physical dimension does this catalog support the most units for, and how many units does it have? Return one row with a column named dimension and a column named n (the unit count).\"},{\"name\":\"parse_and_normalize_to_si\",\"prompt\":\"I have the measurement written as the text '5 km'. Parse it and express its value in the SI base unit of its dimension. Return a single column named base_value.\"},{\"name\":\"dimension_of_unit\",\"prompt\":\"What physical dimension does the unit 'kWh' belong to? Return a single column named dimension.\"},{\"name\":\"compatible_units_check\",\"prompt\":\"Before running conversions I want to sanity-check some unit pairs. For each pair below, tell me whether the two units can be converted between each other. Return the pairs in this exact order, with columns unit_a, unit_b, and is_compatible: (mi, km), (kg, lb), (kg, m), (mi, zzz).\"}]",
+        "vgi.author": "Query.Farm",
+        "vgi.copyright": "Copyright 2026 Query Farm LLC - https://query.farm",
+        "vgi.doc_llm": "Convert physical quantities between units of the same dimension (length, mass, time, energy, data, temperature, \u2026), express a value in its SI base unit, test whether two units are compatible, parse quantity strings like '5 km', and look up a unit's dimension. Use for unit conversion and dimensional analysis in SQL.",
+        "vgi.doc_md": "# Units \u2014 Physical Unit Conversion & Dimensional Analysis in SQL\n\n**Convert physical quantities between units and run dimensional analysis directly in DuckDB SQL** \u2014 length, mass, time, energy, temperature, pressure, data sizes, and more, all resolved at query time. The `units` worker brings runtime, string-driven unit conversion to your queries: units are named by ordinary strings (`'mi'`, `'GiB'`, `'\u00b0C'`, `'kWh'`), so you can normalize measurements, check that two quantities are comparable, and reduce values to their SI base unit without leaving SQL.\n\nThis extension is for data engineers, analysts, and scientists who deal with messy, mixed-unit measurement data \u2014 energy bills in kWh, distances in miles and kilometers, storage in GiB and GB, sensor readings in mixed temperature scales. Instead of hard-coding conversion factors into every query or pipeline, you call a single well-tested function and get consistent, documented results. Because unit names are plain strings evaluated per row, it works naturally over columns of dirty real-world data, returning `NULL` for unrecognized units rather than aborting a scan.\n\nUnder the hood the worker is powered by a **curated internal unit table** rather than an external dependency: each unit string maps to a `(dimension, factor, offset)` triple, and every conversion is an exact affine round-trip through the SI base unit of its dimension (`base = value * factor + offset`). Offsets are used only by the temperature scales (\u00b0C/\u00b0F/K/\u00b0R) so that 0 \u00b0C = 273.15 K = 32 \u00b0F comes out right; all other factors are the exact agreed SI constants (e.g. inch = 0.0254 m, pound = 0.45359237 kg, atm = 101325 Pa, calorie = 4.184 J, IEC binary prefixes as 1024\u207f vs decimal 1000\u207f). The factors follow the official SI definitions maintained by the [BIPM](https://www.bipm.org/en/measurement-units) and the [NIST reference on constants, units, and uncertainty](https://physics.nist.gov/cuu/Units/).\n\n**When to reach for it.** Use this worker whenever a query must reconcile measurements recorded in different units, confirm that two quantities are even comparable before combining them, reduce heterogeneous values to a common SI base so they can be aggregated, or turn free-text quantity strings into structured numeric values. It fits reporting pipelines that mix imperial and metric sources, scientific workloads that must normalize before doing math, and data-cleaning steps that quarantine unrecognized units as NULL rather than failing.",
+        "vgi.keywords": "[\"units\",\"unit conversion\",\"convert\",\"dimensional analysis\",\"measurement\",\"length\",\"mass\",\"time\",\"energy\",\"temperature\",\"data\",\"SI\",\"metric\",\"imperial\"]",
+        "vgi.license": "MIT",
+        "vgi.subtitle": "Convert measurements between units, normalize them to SI, and check that two quantities are comparable.",
+        "vgi.support_contact": "https://github.com/Query-farm/vgi-units/issues",
+        "vgi.support_policy_url": "https://github.com/Query-farm/vgi-units/blob/main/README.md",
+        "vgi.title": "Unit Conversion",
+        "vgi_resolved_implementation_version": "0.4.0"
+      }
+    ]
+  ]
+}

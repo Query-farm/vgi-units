@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "repository": "Query-farm/vgi-units",
+  "revision": "17e40333f38abaf149b78555c1966d1863bcd692",
+  "captured_at": "2026-11-14T19:52:06.803602+00:00",
+  "default_schema": "main",
+  "scope": "all_public_functions_and_tables",
+  "complete": true,
+  "objects": [
+    {
+      "schema": "main",
+      "name": "compatible",
+      "kind": "function",
+      "signatures": [
+        "compatible(VARCHAR, VARCHAR) -> BOOLEAN"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "convert",
+      "kind": "function",
+      "signatures": [
+        "convert(ANY, VARCHAR, VARCHAR) -> DOUBLE"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "dimension",
+      "kind": "function",
+      "signatures": [
+        "dimension(VARCHAR) -> VARCHAR"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "parse_quantity",
+      "kind": "function",
+      "signatures": [
+        "parse_quantity(VARCHAR) -> STRUCT(\"value\" DOUBLE, unit VARCHAR)"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "supported_units",
+      "kind": "function",
+      "signatures": [
+        "supported_units() -> None"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "to_base",
+      "kind": "function",
+      "signatures": [
+        "to_base(ANY, VARCHAR) -> DOUBLE"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "supported_units",
+      "kind": "table",
+      "signatures": [
+        "TABLE"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "convert_strict",
+      "kind": "function",
+      "signatures": [
+        "convert_strict(DOUBLE, VARCHAR, VARCHAR) -> DOUBLE"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "convert_difference_strict",
+      "kind": "function",
+      "signatures": [
+        "convert_difference_strict(DOUBLE, VARCHAR, VARCHAR) -> DOUBLE"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "unit_catalog",
+      "kind": "function",
+      "signatures": [
+        "unit_catalog() -> None"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "unit_catalog",
+      "kind": "table",
+      "signatures": [
+        "TABLE(unit VARCHAR, dimension VARCHAR, base_unit VARCHAR, quantity_space VARCHAR, factor DOUBLE, offset DOUBLE, implementation_version VARCHAR, contract_version VARCHAR)"
+      ],
+      "authentication": "none",
+      "access": "read"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "coverage/current-registration.rs",
+      "sha256": "cdfbe3ab7342ecbf35eb253a9b5174579004bd1bcf6d4e31800f00ba290bccd1",
+      "description": "Complete current source registration/implementation review; current-only surfaces remain uncovered"
+    },
+    {
+      "path": "coverage/current-scalar-registration.rs",
+      "sha256": "13d4d0dc76017d913e932bb012d2cbaadffb10ab504304344e3c68edda42115c",
+      "description": "Complete current source registration/implementation review; current-only surfaces remain uncovered"
+    },
+    {
+      "path": "coverage/current-table-registration.rs",
+      "sha256": "9540d235efc2af856e94d8fc2400e3ae5bc8747794694987b11c52f65b41990c",
+      "description": "Complete current source registration/implementation review; current-only surfaces remain uncovered"
+    },
+    {
+      "path": "coverage/current-strict-scalars.rs",
+      "sha256": "8d576ee4b5ecbfa4be6b1a93903faa88e5e5d4b8c4b40ec7643f5552c8dd8266",
+      "description": "Complete current source registration/implementation review; current-only surfaces remain uncovered"
+    },
+    {
+      "path": "coverage/current-unit-catalog.rs",
+      "sha256": "4f5407662946f33680c368c29ce3bab572fbf49660e801bafafcaad535530cb2",
+      "description": "Complete current source registration/implementation review; current-only surfaces remain uncovered"
+    },
+    {
+      "path": "coverage/released-registration.rs",
+      "sha256": "d64daa335b88b89a03ebd0b66ea4af0a7f31ed5c8ec155f32bb251719775b30c",
+      "description": "Complete current source registration/implementation review; current-only surfaces remain uncovered"
+    },
+    {
+      "path": "coverage/release-to-current.diff",
+      "sha256": "eea79af655fdde120aad75a2caacc8eb4de487ee882f6fe9d7a1914a008f4731",
+      "description": "Complete current source registration/implementation review; current-only surfaces remain uncovered"
+    },
+    {
+      "path": "coverage/source-review.json",
+      "sha256": "c70c1dffe6e2e6de59dcf2a5f9392c95d51000c541b876d920f019b69fc691db",
+      "description": "Complete current source registration/implementation review; current-only surfaces remain uncovered"
+    }
+  ]
+}

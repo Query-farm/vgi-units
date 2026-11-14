@@ -1,120 +1,74 @@
-# vgi-units notebooks
+# Unit Conversion
 
-<a href="https://query.farm/"><img src="assets/query-farm-strata-sun.svg" alt="Query.Farm — Strata Sun" width="252"></a>
+[01 · One report, mixed units](01_one_report_mixed_units.ipynb) combines a synthetic
+three-site sampling round without losing invalid rows or confusing absolute
+temperatures with temperature changes. Visible SQL handles discovery, parsing,
+validation, conversion and aggregation; three SVG figures explain the results.
 
-<a href="https://query.farm/vgi/"><img src="assets/vgi-logo.png" alt="VGI — Vector Gateway Interface" width="280"></a>
-
-[Query.Farm](https://query.farm/) · [VGI](https://query.farm/vgi/) · [Haybarn](https://query.farm/products/haybarn/)
-
-| Notebook | Investigation |
-|---|---|
-| [01 · One report, mixed units](01_one_report_mixed_units.ipynb) | Validate a synthetic three-site sampling round, discover compatible units, normalize operating measurements, and distinguish absolute temperatures from temperature rises. |
-
-The saved notebook includes successful execution outputs and three embedded charts.
-Python handles setup, presentation and assertions. Visible JupySQL `%%sql` cells
-connect Haybarn to the actual **Rust worker** and perform discovery, parsing,
-validation, conversions and aggregation. All measurements are explicitly synthetic,
-defined in the notebook's SQL; there is no external dataset, API or replay mode.
-The single hypothetical sampling round has no acquisition timestamp or time window.
-
-## Install and run
-
-Prerequisite: `uv`. Download or copy this entire **notebooks/** directory, then
-run from it:
+Open the notebook's **Open in Colab** link, or use [uv](https://docs.astral.sh/uv/):
 
 ```sh
+cd notebooks
 uv sync --locked
-uv run --locked python execute.py
+uv run --locked vgi-notebooks
 ```
 
-Select `.venv/bin/python` in a Jupyter-compatible editor and **Restart Kernel →
-Run All**. The notebook environment supports Python 3.13–3.14 and pins published
-Haybarn **2.0.0rc11**. No Rust compiler, native build or worker checkout is needed.
-The visible SQL uses:
+A notebook downloaded on its own retrieves its verified plotting companion.
+Colab installs the shared base package and preserves compatible preloaded kernel
+libraries. The local lock includes the runner; select `notebooks/.venv/bin/python`
+in a notebook editor. Restart and run all after changing a parameter.
+
+The visible connection uses the native release:
 
 ```sql
-ATTACH 'units' (TYPE vgi, LOCATION 'github-auto://Query-farm/vgi-units@v0.4.0');
+INSTALL vgi FROM community;
+LOAD vgi;
+ATTACH 'units' (TYPE vgi,
+  LOCATION 'github-auto://Query-farm/vgi-units@v0.4.0');
 ```
 
-VGI selects the native platform archive and verifies its published SHA-256 sidecar.
-The release lists Linux amd64/arm64, macOS arm64 and Windows amd64 assets.
-This notebook was executed on macOS arm64; other platforms need a matching
-release asset accepted by the transport. Initial package,
-extension and worker downloads need network access. All calculations are local.
-To upgrade, change the release pin in ATTACH, execute the default and Kelvin
-experiment, and review conversion semantics and relationship checks.
-
-Version **v0.4.0** exposes `convert`, `to_base`, `dimension`, `compatible`,
-`parse_quantity` and `supported_units`. The newer strict functions and
-`unit_catalog` in the development source are absent from this published binary.
-This example deliberately uses the verified release surface: it audits inputs,
-then subtracts a converted zero to cancel offsets for temperature differences.
-
-Python setup, plotting, prose source and cleanup carry portable folding metadata.
-Keep parameters, analytical SQL, charts and interpretations visible. The runner
-uses the notebook directory as its kernel working directory and needs no globally
-registered kernel.
+Initial setup needs network access. Calculations then use authored SQL inputs;
+no Rust compiler, credentials or local worker source is needed. Execution is
+verified on macOS arm64. The notebook-only bootstrap is checked with libraries
+already imported in a compatible local kernel; hosted Colab itself was not
+manually run. GitHub displays saved tables and sharp SVG figures.
 
 ## Change the reporting scale
 
-Edit `REPORT_TEMP_UNIT` in the visible parameters cell and **Restart Kernel → Run
-All**. Accepted exact strings are `"°C"`, `"°F"` (default), and `"K"`. Pressure
-and sample volume keep their report units, while absolute temperatures and
-temperature differences use the selected scale. The experiment at the end asks
-you to change only this parameter to `"K"` and compare the same physical samples.
-
-Validate the experiment without replacing the successful default notebook:
+`REPORT_TEMP_UNIT` accepts `"°C"`, `"°F"` or `"K"`. The saved default is Fahrenheit.
+Keep it intact by executing the Kelvin experiment into a separate directory:
 
 ```sh
-uv run --locked python execute.py \
-  --parameters '{"REPORT_TEMP_UNIT":"K"}' --output-dir artifacts/kelvin
+uv run --locked vgi-notebooks --parameters '{"REPORT_TEMP_UNIT":"K"}' \
+  --output-dir artifacts/kelvin
 ```
 
-The runner rejects unknown parameter names, requires a separate output directory
-for overrides, and creates a temporary kernel specification using the current
-environment. Each execution starts a fresh kernel; a failed run leaves the saved
-notebook unchanged. The runner atomically saves only after success, rejects source
-overwrite destinations, and copies branding, this guide, helpers and environment
-files beside experiments. The main notebook embeds all three charts; generated
-logs, experiments and extracted charts under `artifacts/` are Git-ignored.
+Pressure, volume and input eligibility stay fixed. Absolute temperatures change
+scale, while temperature rises keep their physical size and ordering. The two
+panels in the offset comparison use independently labeled vertical ranges so
+Kelvin's large absolute offset does not flatten the difference curve.
 
-## Interpretation and checks
+## Inputs and interpretation
 
-The examples assume pressure readings share one absolute reference and that `gal`
-means the worker's US liquid gallon. A sampled volume is not a flow rate. No
-timestamp, calibration, sensor precision, process efficiency or operating limit is
-inferred from these inputs. Missing, unparsed and incompatible rows remain visible
-in the audit and are never converted to zero. Zero is a valid temperature reading.
-`parse_quantity` returns NULL for both malformed text and unknown units, so those
-two cases deliberately share one audit status.
+All seventeen input rows are visible SQL literals: twelve operating measurements
+and five diagnostic controls. They describe one hypothetical sampling round with
+no acquisition time. The pressure reference is assumed consistent; converting
+units cannot reconcile gauge and absolute pressure. Volumes are samples, not flow
+rates, because no elapsed time is provided. `gal` means the worker's US liquid gallon.
 
-Absolute temperatures use `convert`; differences use the affine identity
-`convert(delta, source, target) - convert(0, source, target)`. Unknown units return
-NULL and incompatible known dimensions error, so only audited rows are converted. Assertions verify round trips, agreement with
-`to_base`, cancellation of temperature offsets, unique reading identifiers,
-coverage accounting and absence of conversions for rejected rows. Tolerances
-reflect binary64 arithmetic; displayed digits are not sensor precision claims.
-Assertions do not depend on a site's ranking.
+The input audit retains missing, unparsed and incompatible readings. Accepted
+pairs are materialized before conversion. Unknown units can produce NULL in this
+release; incompatible recognized dimensions produce an error. Ten relationship
+checks require complete accepted results, preserve the input population, verify
+round trips and reconcile two ways of computing temperature differences.
 
-Repository gates remain:
+Release v0.4.0 provides all **6/6 SQL surfaces demonstrated here**. Current public
+source adds `convert_strict`, `convert_difference_strict` and `unit_catalog`, which
+are absent from the latest binary release. Current-interface coverage is therefore
+**6/9**, with those three explicitly uncovered. The notebook cancels affine offsets
+using the released conversion functions; it does not pretend to call the newer API.
+Complete catalogs, mappings and execution receipts are in [coverage.json](coverage.json)
+and [coverage/](coverage/). No current-main runtime execution is claimed.
 
-```sh
-cargo test --locked --workspace --all-features
-cargo clippy --locked --all-targets --all-features -- -D warnings
-cargo fmt --all -- --check
-uv tool install 'haybarn-unittest==2.0.0rc11'  # if not already installed
-make test-sql  # subprocess, HTTP and Unix transports
-```
-
-The small [support module](notebook_support.py) contains presentation and SQL literal
-quoting; analytical SQL remains in the notebook. See the worker
-[function reference](../README.md#function-surface) for NULL/error semantics and
-the [conversion engine](../crates/units-worker/src/units.rs) for factor provenance.
-
-Brand assets are unchanged copies from `vgi-perps/notebooks/assets/`. The adaptive
-Strata Sun + Query.Farm wordmark originates from the official website media kit
-(`logo/wordmark-adaptive.svg`); the VGI logo comes from its `products/vgi/` directory.
-
----
-
-<a href="https://query.farm/"><img src="assets/query-farm-strata-sun.svg" alt="Query.Farm — Strata Sun" width="210"></a>
+The shared [notebook standard](https://github.com/Query-farm/vgi-example-notebooks/blob/main/docs/standard.md)
+owns branding, setup, execution and SVG publication.

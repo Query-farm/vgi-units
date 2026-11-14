@@ -1,0 +1,556 @@
+{
+  "schema_version": 1,
+  "status": "incomplete",
+  "meets_target": false,
+  "catalogs": {
+    "released": {
+      "catalog_status": "verified",
+      "revision": "v0.4.0",
+      "catalog_sha256": "9e5aebe8e1cd9f94d8e5b748366fadeba00dbd379d1d99fda33ade1516acb9e0",
+      "collection_reconciled": true,
+      "denominator": 6,
+      "observed_objects": 6,
+      "required": 6,
+      "verified_count": 6,
+      "candidate_count": 0,
+      "fraction": 1.0,
+      "meets_target": true,
+      "exact_runtime_count": 6,
+      "runtime_revisions": [
+        "v0.4.0"
+      ],
+      "covered": [
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "compatible"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "convert"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "dimension"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "parse_quantity"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "supported_units"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "to_base"
+        }
+      ],
+      "uncovered": [],
+      "objects": [
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "compatible",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "compatible(VARCHAR, VARCHAR) -> BOOLEAN"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "convert",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "convert(ANY, VARCHAR, VARCHAR) -> DOUBLE"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "dimension",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "dimension(VARCHAR) -> VARCHAR"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "parse_quantity",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "parse_quantity(VARCHAR) -> STRUCT(\"value\" DOUBLE, unit VARCHAR)"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "supported_units",
+          "kinds": [
+            "function",
+            "table"
+          ],
+          "signatures": [
+            "TABLE",
+            "supported_units() -> None"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "to_base",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "to_base(ANY, VARCHAR) -> DOUBLE"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        }
+      ],
+      "issues": []
+    },
+    "current": {
+      "catalog_status": "verified",
+      "revision": "17e40333f38abaf149b78555c1966d1863bcd692",
+      "catalog_sha256": "50f437963c417ca670a85d951bf50456aec695fc54c6837423794263ffd62a5c",
+      "collection_reconciled": false,
+      "denominator": 9,
+      "observed_objects": 9,
+      "required": 9,
+      "verified_count": 6,
+      "candidate_count": 0,
+      "fraction": 0.6666666666666666,
+      "meets_target": false,
+      "exact_runtime_count": 0,
+      "runtime_revisions": [
+        "v0.4.0"
+      ],
+      "covered": [
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "compatible"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "convert"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "dimension"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "parse_quantity"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "supported_units"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "to_base"
+        }
+      ],
+      "uncovered": [
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "convert_difference_strict"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "convert_strict"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "unit_catalog"
+        }
+      ],
+      "objects": [
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "compatible",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "compatible(VARCHAR, VARCHAR) -> BOOLEAN"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "convert",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "convert(ANY, VARCHAR, VARCHAR) -> DOUBLE"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "convert_difference_strict",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "convert_difference_strict(DOUBLE, VARCHAR, VARCHAR) -> DOUBLE"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "convert_strict",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "convert_strict(DOUBLE, VARCHAR, VARCHAR) -> DOUBLE"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "dimension",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "dimension(VARCHAR) -> VARCHAR"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "parse_quantity",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "parse_quantity(VARCHAR) -> STRUCT(\"value\" DOUBLE, unit VARCHAR)"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "supported_units",
+          "kinds": [
+            "function",
+            "table"
+          ],
+          "signatures": [
+            "TABLE",
+            "supported_units() -> None"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "to_base",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "to_base(ANY, VARCHAR) -> DOUBLE"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "unit_catalog",
+          "kinds": [
+            "function",
+            "table"
+          ],
+          "signatures": [
+            "TABLE(unit VARCHAR, dimension VARCHAR, base_unit VARCHAR, quantity_space VARCHAR, factor DOUBLE, offset DOUBLE, implementation_version VARCHAR, contract_version VARCHAR)",
+            "unit_catalog() -> None"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        }
+      ],
+      "issues": []
+    }
+  },
+  "interface_drift": {
+    "known": true,
+    "current_only": [
+      {
+        "schema": [
+          "main"
+        ],
+        "name": "convert_difference_strict"
+      },
+      {
+        "schema": [
+          "main"
+        ],
+        "name": "convert_strict"
+      },
+      {
+        "schema": [
+          "main"
+        ],
+        "name": "unit_catalog"
+      }
+    ],
+    "released_only": [],
+    "changed": []
+  },
+  "notebooks": {
+    "01_one_report_mixed_units.ipynb": {
+      "verified": true,
+      "issues": []
+    }
+  },
+  "examples": [
+    {
+      "status": "verified",
+      "issues": [],
+      "verified_catalogs": [
+        "released",
+        "current"
+      ],
+      "object": {
+        "schema": [
+          "main"
+        ],
+        "name": "supported_units"
+      },
+      "notebook": "01_one_report_mixed_units.ipynb",
+      "runtime_revision": "v0.4.0",
+      "runtime_catalog_sha256": "9e5aebe8e1cd9f94d8e5b748366fadeba00dbd379d1d99fda33ade1516acb9e0"
+    },
+    {
+      "status": "verified",
+      "issues": [],
+      "verified_catalogs": [
+        "released",
+        "current"
+      ],
+      "object": {
+        "schema": [
+          "main"
+        ],
+        "name": "dimension"
+      },
+      "notebook": "01_one_report_mixed_units.ipynb",
+      "runtime_revision": "v0.4.0",
+      "runtime_catalog_sha256": "9e5aebe8e1cd9f94d8e5b748366fadeba00dbd379d1d99fda33ade1516acb9e0"
+    },
+    {
+      "status": "verified",
+      "issues": [],
+      "verified_catalogs": [
+        "released",
+        "current"
+      ],
+      "object": {
+        "schema": [
+          "main"
+        ],
+        "name": "compatible"
+      },
+      "notebook": "01_one_report_mixed_units.ipynb",
+      "runtime_revision": "v0.4.0",
+      "runtime_catalog_sha256": "9e5aebe8e1cd9f94d8e5b748366fadeba00dbd379d1d99fda33ade1516acb9e0"
+    },
+    {
+      "status": "verified",
+      "issues": [],
+      "verified_catalogs": [
+        "released",
+        "current"
+      ],
+      "object": {
+        "schema": [
+          "main"
+        ],
+        "name": "parse_quantity"
+      },
+      "notebook": "01_one_report_mixed_units.ipynb",
+      "runtime_revision": "v0.4.0",
+      "runtime_catalog_sha256": "9e5aebe8e1cd9f94d8e5b748366fadeba00dbd379d1d99fda33ade1516acb9e0"
+    },
+    {
+      "status": "verified",
+      "issues": [],
+      "verified_catalogs": [
+        "released",
+        "current"
+      ],
+      "object": {
+        "schema": [
+          "main"
+        ],
+        "name": "convert"
+      },
+      "notebook": "01_one_report_mixed_units.ipynb",
+      "runtime_revision": "v0.4.0",
+      "runtime_catalog_sha256": "9e5aebe8e1cd9f94d8e5b748366fadeba00dbd379d1d99fda33ade1516acb9e0"
+    },
+    {
+      "status": "verified",
+      "issues": [],
+      "verified_catalogs": [
+        "released",
+        "current"
+      ],
+      "object": {
+        "schema": [
+          "main"
+        ],
+        "name": "to_base"
+      },
+      "notebook": "01_one_report_mixed_units.ipynb",
+      "runtime_revision": "v0.4.0",
+      "runtime_catalog_sha256": "9e5aebe8e1cd9f94d8e5b748366fadeba00dbd379d1d99fda33ade1516acb9e0"
+    }
+  ],
+  "issues": []
+}

@@ -1,0 +1,290 @@
+{
+  "schema_version": 1,
+  "catalogs": {
+    "released": {
+      "path": "coverage/catalog-release.json",
+      "sha256": "9e5aebe8e1cd9f94d8e5b748366fadeba00dbd379d1d99fda33ade1516acb9e0",
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root",
+        "reviewed_at": "2026-11-14T20:05:31.338874+00:00",
+        "catalog_sha256": "9e5aebe8e1cd9f94d8e5b748366fadeba00dbd379d1d99fda33ade1516acb9e0",
+        "notes": "Actual v0.4.0 full worker-filtered function/table/view exports contain six logical surfaces; supported_units table/function alias is counted once. No authentication or writes exist and no capability is excluded."
+      }
+    },
+    "current": {
+      "path": "coverage/catalog-current.json",
+      "sha256": "50f437963c417ca670a85d951bf50456aec695fc54c6837423794263ffd62a5c",
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root",
+        "reviewed_at": "2026-11-14T20:05:31.338874+00:00",
+        "catalog_sha256": "50f437963c417ca670a85d951bf50456aec695fc54c6837423794263ffd62a5c",
+        "notes": "Complete current registration at17e40333f38abaf149b78555c1966d1863bcd692 exposes nine logical names. The two strict scalars and unit_catalog table/function are retained in the denominator but absent from the latest binary and uncovered. Full source review establishes compatible existing six names, unchanged unit definitions/callbacks/schemas, and source evidence for all three additions. No current build/execution claim is made."
+      }
+    }
+  },
+  "notebooks": [
+    {
+      "path": "01_one_report_mixed_units.ipynb",
+      "sha256": "c6f30095f4279dab77beba4323d8011bbf70550846af658e66042f849640f0c3",
+      "execution": {
+        "path": "coverage/run-01.json",
+        "sha256": "0067e753bb1fc204e4b99034dd233b52e5215c79ae57444610d0c56845b43a48"
+      }
+    }
+  ],
+  "examples": [
+    {
+      "object": {
+        "schema": "main",
+        "name": "supported_units"
+      },
+      "notebook": "01_one_report_mixed_units.ipynb",
+      "sql": [
+        {
+          "cell": "03e279df",
+          "reference": "units.main.supported_units"
+        }
+      ],
+      "narrative_cells": [
+        "cc6701a4",
+        "f08ddd15"
+      ],
+      "result_cells": [
+        "03e279df",
+        "4c15dd97"
+      ],
+      "interpretation_cells": [
+        "cc6701a4",
+        "f08ddd15"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root",
+        "reviewed_at": "2026-11-14T20:05:31.338874+00:00",
+        "notebook_sha256": "c6f30095f4279dab77beba4323d8011bbf70550846af658e66042f849640f0c3",
+        "catalog_sha256": [
+          "9e5aebe8e1cd9f94d8e5b748366fadeba00dbd379d1d99fda33ade1516acb9e0",
+          "50f437963c417ca670a85d951bf50456aec695fc54c6837423794263ffd62a5c"
+        ],
+        "purpose": "Resolve reporting-unit definitions and select actual temperature units for affine probes.",
+        "finding": "Discovery ties pressure to kPa, volume to L and temperature to the selected scale; temperature base is K. Only units returned by this release enter the factor/offset probe. Compatibility does not distinguish absolute readings from differences."
+      }
+    },
+    {
+      "object": {
+        "schema": "main",
+        "name": "dimension"
+      },
+      "notebook": "01_one_report_mixed_units.ipynb",
+      "sql": [
+        {
+          "cell": "98a3abd1",
+          "reference": "units.main.dimension"
+        },
+        {
+          "cell": "101061f3",
+          "reference": "units.main.dimension"
+        }
+      ],
+      "narrative_cells": [
+        "cc6701a4",
+        "eddb26f4"
+      ],
+      "result_cells": [
+        "98a78056",
+        "101061f3"
+      ],
+      "interpretation_cells": [
+        "98a78056",
+        "de88e52e"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root",
+        "reviewed_at": "2026-11-14T20:05:31.338874+00:00",
+        "notebook_sha256": "c6f30095f4279dab77beba4323d8011bbf70550846af658e66042f849640f0c3",
+        "catalog_sha256": [
+          "9e5aebe8e1cd9f94d8e5b748366fadeba00dbd379d1d99fda33ade1516acb9e0",
+          "50f437963c417ca670a85d951bf50456aec695fc54c6837423794263ffd62a5c"
+        ],
+        "purpose": "Keep known but dimensionally unsuitable units distinct from unrecognized text.",
+        "finding": "Seven of eight candidate labels are recognized. kg is a valid mass unit but not valid for the pressure report; buckets is unknown. The reading audit preserves this distinction and does not replace unavailable quantities with zero."
+      }
+    },
+    {
+      "object": {
+        "schema": "main",
+        "name": "compatible"
+      },
+      "notebook": "01_one_report_mixed_units.ipynb",
+      "sql": [
+        {
+          "cell": "98a3abd1",
+          "reference": "units.main.compatible"
+        },
+        {
+          "cell": "101061f3",
+          "reference": "units.main.compatible"
+        }
+      ],
+      "narrative_cells": [
+        "cc6701a4",
+        "eddb26f4"
+      ],
+      "result_cells": [
+        "98a78056",
+        "101061f3"
+      ],
+      "interpretation_cells": [
+        "98a78056",
+        "de88e52e"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root",
+        "reviewed_at": "2026-11-14T20:05:31.338874+00:00",
+        "notebook_sha256": "c6f30095f4279dab77beba4323d8011bbf70550846af658e66042f849640f0c3",
+        "catalog_sha256": [
+          "9e5aebe8e1cd9f94d8e5b748366fadeba00dbd379d1d99fda33ade1516acb9e0",
+          "50f437963c417ca670a85d951bf50456aec695fc54c6837423794263ffd62a5c"
+        ],
+        "purpose": "Screen dimension compatibility before converting a mixed batch.",
+        "finding": "The 5kg pressure control remains incompatible, separate from unknown/missing text. Accepted rows are materialized before conversion so an incompatible pair cannot abort the conversion batch. Temperature compatibility alone cannot validate quantity semantics."
+      }
+    },
+    {
+      "object": {
+        "schema": "main",
+        "name": "parse_quantity"
+      },
+      "notebook": "01_one_report_mixed_units.ipynb",
+      "sql": [
+        {
+          "cell": "101061f3",
+          "reference": "units.main.parse_quantity"
+        }
+      ],
+      "narrative_cells": [
+        "eddb26f4"
+      ],
+      "result_cells": [
+        "101061f3",
+        "de88e52e"
+      ],
+      "interpretation_cells": [
+        "de88e52e"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root",
+        "reviewed_at": "2026-11-14T20:05:31.338874+00:00",
+        "notebook_sha256": "c6f30095f4279dab77beba4323d8011bbf70550846af658e66042f849640f0c3",
+        "catalog_sha256": [
+          "9e5aebe8e1cd9f94d8e5b748366fadeba00dbd379d1d99fda33ade1516acb9e0",
+          "50f437963c417ca670a85d951bf50456aec695fc54c6837423794263ffd62a5c"
+        ],
+        "purpose": "Parse visible raw measurement strings while retaining all17 input rows and their failure categories.",
+        "finding": "Thirteen rows are accepted:12 operating measurements plus the valid zero reference. Missing text, malformed/unknown text and a recognized incompatible unit remain in the audit. Parsed0\u00b0C is a real value, not missing data."
+      }
+    },
+    {
+      "object": {
+        "schema": "main",
+        "name": "convert"
+      },
+      "notebook": "01_one_report_mixed_units.ipynb",
+      "sql": [
+        {
+          "cell": "82b0ff8b",
+          "reference": "units.main.convert"
+        },
+        {
+          "cell": "8c17e449",
+          "reference": "units.main.convert"
+        },
+        {
+          "cell": "2d103b74",
+          "reference": "units.main.convert"
+        },
+        {
+          "cell": "98402edc",
+          "reference": "units.main.convert"
+        }
+      ],
+      "narrative_cells": [
+        "4e0ddbf9",
+        "20f93f95",
+        "f08ddd15"
+      ],
+      "result_cells": [
+        "82b0ff8b",
+        "db44cf01",
+        "389e40a6",
+        "d19a53d0"
+      ],
+      "interpretation_cells": [
+        "c22c9bac",
+        "ceb3b4e0",
+        "e793bda8"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root",
+        "reviewed_at": "2026-11-14T20:05:31.338874+00:00",
+        "notebook_sha256": "c6f30095f4279dab77beba4323d8011bbf70550846af658e66042f849640f0c3",
+        "catalog_sha256": [
+          "9e5aebe8e1cd9f94d8e5b748366fadeba00dbd379d1d99fda33ade1516acb9e0",
+          "50f437963c417ca670a85d951bf50456aec695fc54c6837423794263ffd62a5c"
+        ],
+        "purpose": "Normalize accepted measurements and distinguish affine absolute conversions from temperature differences.",
+        "finding": "Pressures become240,248.21 and250kPa, volumes12,11.36 and12.5L. In Fahrenheit, rises18/27/27\u0394\u00b0F agree with endpoint subtraction. A10\u0394\u00b0C change is18\u0394\u00b0F, while applying absolute conversion gives50 and adds32. The Kelvin experiment changes this comparison to10 versus283.15, retaining the physical rises and non-temperature data."
+      }
+    },
+    {
+      "object": {
+        "schema": "main",
+        "name": "to_base"
+      },
+      "notebook": "01_one_report_mixed_units.ipynb",
+      "sql": [
+        {
+          "cell": "82b0ff8b",
+          "reference": "units.main.to_base"
+        },
+        {
+          "cell": "4c15dd97",
+          "reference": "units.main.to_base"
+        }
+      ],
+      "narrative_cells": [
+        "4e0ddbf9",
+        "f08ddd15",
+        "72da401c"
+      ],
+      "result_cells": [
+        "4c15dd97",
+        "74b6e389",
+        "e793bda8"
+      ],
+      "interpretation_cells": [
+        "f08ddd15",
+        "e793bda8",
+        "74b6e389"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root",
+        "reviewed_at": "2026-11-14T20:05:31.338874+00:00",
+        "notebook_sha256": "c6f30095f4279dab77beba4323d8011bbf70550846af658e66042f849640f0c3",
+        "catalog_sha256": [
+          "9e5aebe8e1cd9f94d8e5b748366fadeba00dbd379d1d99fda33ade1516acb9e0",
+          "50f437963c417ca670a85d951bf50456aec695fc54c6837423794263ffd62a5c"
+        ],
+        "purpose": "Probe actual affine offsets and independently reconcile normalized measurements in each base unit.",
+        "finding": "to_base(0,unit) exposes the absolute offset; to_base(1,unit)-to_base(0,unit) exposes its scale. These runtime probes explain why subtracting converted zero removes the error. Ten checks verify base agreement, round trips, audit coverage and offset cancellation."
+      }
+    }
+  ]
+}

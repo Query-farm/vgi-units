@@ -1,0 +1,1393 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index bd68019..4bf59c4 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -1952,6 +1952,9 @@ dependencies = [
+  "arrow-schema",
+  "env_logger",
+  "log",
++ "serde",
++ "serde_json",
++ "sha2",
+  "vgi",
+  "vgi-rpc",
+ ]
+diff --git a/crates/units-worker/Cargo.toml b/crates/units-worker/Cargo.toml
+index 6df17f3..7ed45da 100644
+--- a/crates/units-worker/Cargo.toml
++++ b/crates/units-worker/Cargo.toml
+@@ -21,6 +21,9 @@ arrow-array.workspace = true
+ arrow-buffer.workspace = true
+ arrow-schema.workspace = true
+ log = "0.4"
++serde = { version = "1", features = ["derive"] }
++serde_json = { version = "1", features = ["float_roundtrip"] }
++sha2 = "0.10"
+ 
+ # --- Native ---------------------------------------------------------------
+ # The SDK's real default features — the stdio/HTTP transport and bundled SQLite.
+diff --git a/crates/units-worker/examples/export_unit_catalog.rs b/crates/units-worker/examples/export_unit_catalog.rs
+new file mode 100644
+index 0000000..f1a0311
+--- /dev/null
++++ b/crates/units-worker/examples/export_unit_catalog.rs
+@@ -0,0 +1,6 @@
++//! Export the exact `units.catalog_v1` JSON bytes (no trailing newline) without
++//! starting an RPC worker. Its SHA-256 equals the strict scalars'
++//! `units.catalog_v1_sha256` tag.
++fn main() {
++    print!("{}", units_worker::unit_catalog_json());
++}
+diff --git a/crates/units-worker/src/examples.rs b/crates/units-worker/src/examples.rs
+new file mode 100644
+index 0000000..caf6c3b
+--- /dev/null
++++ b/crates/units-worker/src/examples.rs
+@@ -0,0 +1,59 @@
++//! Composed example queries — each combines two or more of the worker's own
++//! objects in one realistic query. Every `(description, sql)` pair is defined
++//! once here and referenced from both the schema-level `vgi.example_queries`
++//! list (`lib.rs`) and the example list of the object that drives the query,
++//! so the two copies can never drift apart.
++
++/// A `(description, sql)` example pair, as consumed by
++/// [`crate::meta::example_queries_json`].
++pub type Example = (&'static str, &'static str);
++
++/// `parse_quantity` + `dimension` + `to_base`: total free-text readings per
++/// dimension in SI base units. The unknown `furlongs` reading parses to NULL
++/// and is dropped.
++pub const PARSED_TOTALS_BY_DIMENSION: Example = (
++    "Parse free-text readings, group them by physical dimension, and total each group in its SI \
++     base unit; '7 furlongs' is not a recognized unit, so it parses to NULL and is skipped.",
++    "WITH r AS (SELECT units.main.parse_quantity(txt) AS q FROM (VALUES ('5 km'), ('3 mi'), ('800 m'), ('2 kg'), ('12 lb'), ('7 furlongs')) AS t(txt)) SELECT units.main.dimension((q).unit) AS dim, count(*) AS readings, round(sum(units.main.to_base((q).value, (q).unit)), 4) AS total_si FROM r WHERE q IS NOT NULL GROUP BY dim ORDER BY dim",
++);
++
++/// `parse_quantity` + `supported_units` + `to_base`: label each normalized
++/// reading with the SI base unit it was reduced to.
++pub const PARSED_TO_BASE_WITH_UNIT: Example = (
++    "Normalize mixed free-text readings to SI and label each with its base unit by joining the \
++     parsed unit to supported_units (e.g. '98.6 °F' becomes 310.15 K).",
++    "WITH r AS (SELECT txt, units.main.parse_quantity(txt) AS q FROM (VALUES ('5 km'), ('2 GiB'), ('1 kWh'), ('98.6 °F')) AS t(txt)) SELECT r.txt, units.main.to_base((r.q).value, (r.q).unit) AS base_value, s.base_unit FROM r JOIN units.main.supported_units AS s ON s.unit = (r.q).unit ORDER BY r.txt",
++);
++
++/// `supported_units` + `convert`: express one mile in every length unit.
++pub const MILE_IN_EVERY_LENGTH_UNIT: Example = (
++    "Express one mile in every length unit the worker recognizes, largest number first.",
++    "SELECT unit, units.main.convert(1, 'mi', unit) AS one_mile FROM units.main.supported_units WHERE dimension = 'length' ORDER BY one_mile DESC, unit",
++);
++
++/// `compatible` + `convert`: guard a conversion so rows in the wrong
++/// dimension yield NULL instead of raising convert's incompatible-dimension
++/// error.
++pub const GUARDED_CONVERT_TO_KG: Example = (
++    "Guard a conversion: convert each row to kilograms only when its unit is compatible with kg, \
++     so the length row ('m') yields NULL instead of an incompatible-dimension error.",
++    "SELECT id, qty, unit, CASE WHEN units.main.compatible(unit, 'kg') THEN units.main.convert(qty, unit, 'kg') END AS kg FROM (VALUES (1, 150.0, 'lb'), (2, 2.5, 'kg'), (3, 3.0, 'm'), (4, 16.0, 'oz')) AS t(id, qty, unit) ORDER BY id",
++);
++
++/// `convert_strict` + `convert_difference_strict`: absolute reading vs.
++/// temperature change, where only the absolute one applies the offset.
++pub const STRICT_READING_AND_RISE: Example = (
++    "Report each reactor's final temperature in °F with convert_strict and its rise in °F with \
++     convert_difference_strict: the 15 °C rise of reactor_a is 27 °F, not the 59 °F an absolute \
++     conversion would give.",
++    "SELECT sensor, round(units.main.convert_strict(end_c, '°C', '°F'), 2) AS end_f, round(units.main.convert_difference_strict(end_c - start_c, '°C', '°F'), 2) AS rise_f FROM (VALUES ('reactor_a', 20.0, 35.0), ('reactor_b', 18.5, 21.0)) AS t(sensor, start_c, end_c) ORDER BY sensor",
++);
++
++/// `unit_catalog` + `convert_strict`: audit strict conversions against the
++/// published factor/offset definitions.
++pub const AUDIT_STRICT_AGAINST_CATALOG: Example = (
++    "Audit strict temperature conversions: convert 100 of each unit with convert_strict and \
++     recompute the same result from the factor and offset published in unit_catalog \
++     ((value * f.factor + f.offset - t.offset) / t.factor).",
++    "SELECT f.unit AS from_unit, t.unit AS to_unit, round(units.main.convert_strict(100, f.unit, t.unit), 6) AS converted, round((100 * f.factor + f.\"offset\" - t.\"offset\") / t.factor, 6) AS recomputed FROM units.main.unit_catalog AS f JOIN units.main.unit_catalog AS t ON t.dimension = f.dimension AND t.unit <> f.unit WHERE f.unit IN ('°C', '°F', 'K') AND t.unit IN ('°C', '°F', 'K') ORDER BY from_unit, to_unit",
++);
+diff --git a/crates/units-worker/src/lib.rs b/crates/units-worker/src/lib.rs
+index b3aefe2..37b05da 100644
+--- a/crates/units-worker/src/lib.rs
++++ b/crates/units-worker/src/lib.rs
+@@ -20,17 +20,24 @@
+ //! SELECT to_base(1, 'GiB');                -- 1073741824
+ //! SELECT parse_quantity('5 km').*;         -- (5.0, 'km')
+ //! SELECT * FROM supported_units();         -- discovery
++//! SELECT convert_strict(0, '°C', '°F');    -- 32 (invalid input → ERROR)
++//! SELECT convert_difference_strict(10, '°C', '°F'); -- 18
++//! SELECT * FROM unit_catalog;              -- factors/offsets + versions
+ //! ```
+ //!
+ //! The pure conversion engine (a curated runtime unit table) lives in `units.rs`;
+ //! the `scalar/` and `table/` modules are thin Arrow adapters over it.
+ 
+ mod arrow_io;
++mod examples;
+ mod meta;
+ mod scalar;
+ mod table;
++mod unit_catalog_metadata;
+ pub mod units;
+ 
++pub use unit_catalog_metadata::{unit_catalog_json, unit_catalog_sha256};
++
+ use vgi::catalog::{CatSchema, CatalogModel};
+ use vgi::Worker;
+ 
+@@ -46,6 +53,10 @@ pub fn version() -> &'static str {
+ fn catalog_metadata(name: &str) -> CatalogModel {
+     CatalogModel {
+         name: name.to_string(),
++        // Function signatures and the curated unit table are compiled into the
++        // worker and cannot change while it serves; a new artifact must be
++        // attached again, so no per-transaction catalog version check is needed.
++        catalog_version_frozen: true,
+         comment: Some(
+             "Runtime, string-driven physical-unit conversion and dimensional analysis.".to_string(),
+         ),
+@@ -145,6 +156,38 @@ fn catalog_metadata(name: &str) -> CatalogModel {
+                          each other. Return the pairs in this exact order, with columns unit_a, \
+                          unit_b, and is_compatible: (mi, km), (kg, lb), (kg, m), (mi, zzz).",
+                     ),
++                    (
++                        "strict_marathon_km",
++                        "For a regulated report, convert a 26.2 mile marathon to kilometres with \
++                         the strict conversion that raises an error, rather than returning NULL, \
++                         on any invalid input. Return a single column named km.",
++                    ),
++                    (
++                        "temperature_rise_fahrenheit",
++                        "A reactor's temperature rose by 10 degrees Celsius. Express that \
++                         temperature change (a difference, not an absolute reading) in degrees \
++                         Fahrenheit, using the strict conversion. Return a single column named \
++                         delta_f.",
++                    ),
++                    (
++                        "celsius_definition",
++                        "An auditor wants the exact definition the worker uses for the unit '°C': \
++                         its scale factor and offset relative to the SI base unit, and the \
++                         contract version they belong to. Return one row with columns factor, \
++                         offset, and contract_version.",
++                    ),
++                    (
++                        "parsed_trip_total_km",
++                        "A trip log records three legs as free text: '3 mi', '5 km' and '800 m'. \
++                         Parse the legs and report the total distance in kilometres, rounded to 3 \
++                         decimal places. Return a single DOUBLE column named total_km.",
++                    ),
++                    (
++                        "length_units_longer_than_foot",
++                        "How many of the recognized length unit strings (each alias counts \
++                         separately) denote a length strictly longer than one foot? Return a \
++                         single BIGINT column named n.",
++                    ),
+                 ]),
+             ),
+             ("vgi.author".to_string(), "Query.Farm".to_string()),
+@@ -177,7 +220,8 @@ fn catalog_metadata(name: &str) -> CatalogModel {
+                     "vgi.keywords".to_string(),
+                     crate::meta::keywords_json(
+                         "units, unit conversion, convert, to_base, dimension, compatible, \
+-                         parse_quantity, supported_units, dimensional analysis, measurement",
++                         parse_quantity, supported_units, convert_strict, \
++                         convert_difference_strict, unit_catalog, dimensional analysis, measurement",
+                     ),
+                 ),
+                 // VGI123 classifying tags (bare keys: domain/category/topic) for faceting.
+@@ -222,7 +266,7 @@ fn catalog_metadata(name: &str) -> CatalogModel {
+   {"name": "Conversion", "description": "Convert and normalize numeric quantities between units of the same physical dimension, including reduction to the SI base unit."},
+   {"name": "Analysis", "description": "Inspect units: look up a unit's physical dimension and test whether two units are compatible for conversion."},
+   {"name": "Parsing", "description": "Parse free-text quantity strings such as '5 km' into a structured value and unit."},
+-  {"name": "Discovery", "description": "Explore the catalog of every recognized unit string, its dimension, and its SI base unit."}
++  {"name": "Discovery", "description": "Explore the catalog of every recognized unit string, its dimension, its SI base unit, and its versioned conversion factor and offset."}
+ ]"#
+                     .to_string(),
+                 ),
+@@ -257,6 +301,14 @@ fn catalog_metadata(name: &str) -> CatalogModel {
+                             "SELECT unit, base_unit FROM units.main.supported_units \
+                              WHERE dimension = 'length' ORDER BY unit",
+                         ),
++                        // Composed examples: two or more of the worker's objects
++                        // in one query (defined once in `examples.rs`).
++                        examples::PARSED_TOTALS_BY_DIMENSION,
++                        examples::PARSED_TO_BASE_WITH_UNIT,
++                        examples::MILE_IN_EVERY_LENGTH_UNIT,
++                        examples::GUARDED_CONVERT_TO_KG,
++                        examples::STRICT_READING_AND_RISE,
++                        examples::AUDIT_STRICT_AGAINST_CATALOG,
+                     ]),
+                 ),
+             ],
+@@ -266,7 +318,7 @@ fn catalog_metadata(name: &str) -> CatalogModel {
+             // (VGI311) so `SELECT * FROM units.main.supported_units` works
+             // without parentheses. `with_function` auto-registers the backing
+             // table function, so no separate `table::register` is needed.
+-            tables: vec![table::supported_units_table()],
++            tables: vec![table::supported_units_table(), table::unit_catalog_table()],
+         }],
+         ..Default::default()
+     }
+diff --git a/crates/units-worker/src/scalar/analysis.rs b/crates/units-worker/src/scalar/analysis.rs
+index f21a699..55d4648 100644
+--- a/crates/units-worker/src/scalar/analysis.rs
++++ b/crates/units-worker/src/scalar/analysis.rs
+@@ -129,10 +129,7 @@ impl ScalarFunction for Compatible {
+                             "Check whether two units can be converted between (true).",
+                             "SELECT units.main.compatible('mi', 'km') AS ok",
+                         ),
+-                        (
+-                            "Guard a conversion: only convert rows whose units are compatible.",
+-                            "SELECT units.main.compatible('kg', 'lb') AS ok",
+-                        ),
++                        crate::examples::GUARDED_CONVERT_TO_KG,
+                     ]),
+                 ));
+                 tags
+diff --git a/crates/units-worker/src/scalar/convert.rs b/crates/units-worker/src/scalar/convert.rs
+index 41a7197..566ba45 100644
+--- a/crates/units-worker/src/scalar/convert.rs
++++ b/crates/units-worker/src/scalar/convert.rs
+@@ -163,6 +163,7 @@ impl ScalarFunction for ToBase {
+                              base.",
+                             "SELECT units.main.to_base(1, 'GiB') AS bytes",
+                         ),
++                        crate::examples::PARSED_TO_BASE_WITH_UNIT,
+                     ]),
+                 ));
+                 tags
+diff --git a/crates/units-worker/src/scalar/mod.rs b/crates/units-worker/src/scalar/mod.rs
+index 0d665ee..7611b14 100644
+--- a/crates/units-worker/src/scalar/mod.rs
++++ b/crates/units-worker/src/scalar/mod.rs
+@@ -3,6 +3,7 @@
+ mod analysis;
+ mod convert;
+ mod parse;
++mod strict;
+ 
+ use vgi::Worker;
+ 
+@@ -10,6 +11,8 @@ use vgi::Worker;
+ pub fn register(worker: &mut Worker) {
+     worker.register_scalar(convert::Convert);
+     worker.register_scalar(convert::ToBase);
++    worker.register_scalar(strict::StrictConvert { difference: false });
++    worker.register_scalar(strict::StrictConvert { difference: true });
+     worker.register_scalar(analysis::DimensionFn);
+     worker.register_scalar(analysis::Compatible);
+     worker.register_scalar(parse::ParseQuantity);
+diff --git a/crates/units-worker/src/scalar/parse.rs b/crates/units-worker/src/scalar/parse.rs
+index 938df7f..a809fa1 100644
+--- a/crates/units-worker/src/scalar/parse.rs
++++ b/crates/units-worker/src/scalar/parse.rs
+@@ -55,6 +55,7 @@ impl ScalarFunction for ParseQuantity {
+                             "WITH q AS (SELECT units.main.parse_quantity('26.2 mi') AS p) \
+                              SELECT units.main.convert((p).value, (p).unit, 'km') AS km FROM q",
+                         ),
++                        crate::examples::PARSED_TOTALS_BY_DIMENSION,
+                     ]),
+                 ));
+                 tags
+diff --git a/crates/units-worker/src/scalar/strict.rs b/crates/units-worker/src/scalar/strict.rs
+new file mode 100644
+index 0000000..edad3ff
+--- /dev/null
++++ b/crates/units-worker/src/scalar/strict.rs
+@@ -0,0 +1,370 @@
++//! Fixed-signature conversions for complete governed results. Existing lenient
++//! conversion functions retain their compatibility contract.
++
++use std::sync::Arc;
++
++use arrow_array::builder::Float64Builder;
++use arrow_array::{ArrayRef, RecordBatch};
++use arrow_schema::DataType;
++use vgi::{ArgSpec, BindParams, BindResponse, FunctionMetadata, ProcessParams, ScalarFunction};
++use vgi_rpc::{Result, RpcError};
++
++use crate::arrow_io::{double_val, text_str};
++use crate::units;
++
++pub struct StrictConvert {
++    pub difference: bool,
++}
++
++impl ScalarFunction for StrictConvert {
++    fn name(&self) -> &str {
++        if self.difference {
++            "convert_difference_strict"
++        } else {
++            "convert_strict"
++        }
++    }
++
++    fn metadata(&self) -> FunctionMetadata {
++        let (description, title, llm, md, keywords, examples): (
++            &str,
++            &str,
++            &str,
++            &str,
++            &str,
++            &[(&str, &str)],
++        ) = if self.difference {
++            (
++                "Convert a finite quantity difference using scale factors without offsets; reject \
++                 invalid units, nonfinite values and overflow; preserve valid NULL values",
++                "Strict Convert Difference",
++                "Convert a quantity difference (an interval or change, e.g. a 10 °C rise) from \
++                 one unit to another unit of the same dimension using only the scale factors, so \
++                 temperature offsets cancel: a 10 °C change is an 18 °F change. Strict: unknown, \
++                 NULL or incompatible units, NaN/infinite inputs and overflowing results raise an \
++                 error instead of returning NULL, so a successful query is a complete result. A \
++                 NULL value with valid compatible units returns NULL.",
++                "Strictly convert a quantity *difference* (offsets cancel), e.g. \
++                 `convert_difference_strict(10, '°C', '°F')` → 18. Invalid units or nonfinite \
++                 values raise an error.",
++                "convert_difference_strict, strict conversion, difference, delta, interval, \
++                 temperature change, governed, complete results, unit conversion",
++                &[
++                    (
++                        "Convert a 10 degree Celsius temperature rise into Fahrenheit degrees.",
++                        "SELECT units.main.convert_difference_strict(10, '°C', '°F') AS delta_f",
++                    ),
++                    (
++                        "Convert a 5 km difference in distance into miles.",
++                        "SELECT units.main.convert_difference_strict(5, 'km', 'mi') AS delta_mi",
++                    ),
++                    crate::examples::STRICT_READING_AND_RISE,
++                ],
++            )
++        } else {
++            (
++                "Convert a finite absolute quantity using scale factors and offsets; reject \
++                 invalid units, nonfinite values and overflow; preserve valid NULL values",
++                "Strict Convert Units",
++                "Convert an absolute quantity from one unit to another unit of the same \
++                 dimension (offset-aware, so 0 °C becomes 32 °F). Strict: unlike convert, \
++                 unknown, NULL or incompatible units, NaN/infinite inputs and overflowing \
++                 results raise an error instead of returning NULL, so a successful query is a \
++                 complete result. A NULL value with valid compatible units returns NULL.",
++                "Strictly convert an absolute quantity, e.g. \
++                 `convert_strict(26.2, 'mi', 'km')`. Invalid units or nonfinite values raise an \
++                 error instead of yielding NULL.",
++                "convert_strict, strict conversion, governed, complete results, validated, \
++                 unit conversion, miles to km, celsius to fahrenheit",
++                &[
++                    (
++                        "Strictly convert a marathon distance from miles to kilometres.",
++                        "SELECT units.main.convert_strict(26.2, 'mi', 'km') AS km",
++                    ),
++                    (
++                        "Strictly convert the freezing point of water from Celsius to \
++                         Fahrenheit (offset-aware).",
++                        "SELECT units.main.convert_strict(0, '°C', '°F') AS fahrenheit",
++                    ),
++                ],
++            )
++        };
++        let mut tags =
++            crate::meta::object_tags(title, llm, md, keywords, "Conversion", "scalar/strict.rs");
++        tags.push((
++            "vgi.example_queries".into(),
++            crate::meta::example_queries_json(examples),
++        ));
++        tags.push(("units.contract_version".into(), "1".into()));
++        tags.push((
++            "units.implementation_version".into(),
++            crate::version().into(),
++        ));
++        tags.push((
++            "units.catalog_v1_sha256".into(),
++            crate::unit_catalog_sha256().into(),
++        ));
++        tags.push((
++            "units.quantity_kind".into(),
++            if self.difference {
++                "difference"
++            } else {
++                "absolute"
++            }
++            .into(),
++        ));
++        FunctionMetadata {
++            description: description.into(),
++            return_type: Some(DataType::Float64),
++            // SPECIAL: NULL inputs are still dispatched, because a NULL value
++            // must not mask an invalid or NULL unit (which errors).
++            null_handling: Some(vgi::protocol::enums::null_handling::SPECIAL.into()),
++            tags,
++            ..Default::default()
++        }
++    }
++
++    fn argument_specs(&self) -> Vec<ArgSpec> {
++        vec![
++            ArgSpec::column_typed(
++                "value",
++                0,
++                DataType::Float64,
++                "The finite quantity to convert, in the source unit. NULL yields NULL (after the \
++                 units are validated); NaN or infinity raises an error.",
++            ),
++            ArgSpec::column_typed(
++                "from_unit",
++                1,
++                DataType::Utf8,
++                "The unit the value is in, e.g. 'mi'. Must be a recognized unit string (see \
++                 supported_units or unit_catalog); unknown or NULL raises an error.",
++            ),
++            ArgSpec::column_typed(
++                "to_unit",
++                2,
++                DataType::Utf8,
++                "The unit to convert into, e.g. 'km'. Must be recognized and share a dimension \
++                 with from_unit; otherwise the call raises an error.",
++            ),
++        ]
++    }
++
++    fn on_bind(&self, params: &BindParams) -> Result<BindResponse> {
++        let schema = params
++            .input_schema
++            .as_ref()
++            .ok_or_else(|| RpcError::value_error("Strict conversion requires an input schema"))?;
++        let expected = [DataType::Float64, DataType::Utf8, DataType::Utf8];
++        if schema.fields().len() != expected.len()
++            || schema
++                .fields()
++                .iter()
++                .zip(expected.iter())
++                .any(|(field, ty)| field.data_type() != ty)
++        {
++            return Err(RpcError::value_error(
++                "Strict conversion requires DOUBLE, VARCHAR, VARCHAR inputs",
++            ));
++        }
++        Ok(BindResponse::result(DataType::Float64))
++    }
++
++    fn process(&self, params: &ProcessParams, batch: &RecordBatch) -> Result<RecordBatch> {
++        if batch.num_columns() != 3 || batch.column(0).data_type() != &DataType::Float64 {
++            return Err(RpcError::value_error(
++                "Strict conversion requires DOUBLE, VARCHAR, VARCHAR inputs",
++            ));
++        }
++        let mut out = Float64Builder::new();
++        for i in 0..batch.num_rows() {
++            // Unit validity is independent of whether the quantity is NULL.
++            // Missing or invalid units must never become a successful NULL result.
++            let from = text_str(batch.column(1), i)?
++                .ok_or_else(|| RpcError::value_error("Source unit is NULL"))?;
++            let to = text_str(batch.column(2), i)?
++                .ok_or_else(|| RpcError::value_error("Target unit is NULL"))?;
++            let f = units::lookup(from).ok_or_else(|| {
++                RpcError::value_error(format!("Unknown source unit '{}'", from.trim()))
++            })?;
++            let t = units::lookup(to).ok_or_else(|| {
++                RpcError::value_error(format!("Unknown target unit '{}'", to.trim()))
++            })?;
++            if f.dimension != t.dimension {
++                return Err(RpcError::value_error(format!(
++                    "Incompatible unit dimensions: '{}' is {}, '{}' is {}",
++                    from.trim(),
++                    f.dimension.name(),
++                    to.trim(),
++                    t.dimension.name()
++                )));
++            }
++            let Some(value) = double_val(batch.column(0), i)? else {
++                out.append_null();
++                continue;
++            };
++            if !value.is_finite() {
++                return Err(RpcError::value_error("Nonfinite conversion input"));
++            }
++            let converted = if self.difference {
++                units::convert_difference(value, from, to)
++            } else {
++                units::convert(value, from, to)
++            }
++            .map_err(|e| RpcError::value_error(e.to_string()))?;
++            if !converted.is_finite() {
++                return Err(RpcError::value_error(
++                    "Nonfinite conversion result or overflow",
++                ));
++            }
++            out.append_value(converted);
++        }
++        let arr: ArrayRef = Arc::new(out.finish());
++        RecordBatch::try_new(params.output_schema.clone(), vec![arr])
++            .map_err(|e| RpcError::runtime_error(e.to_string()))
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use crate::arrow_io::test_support::process_params;
++    use arrow_array::{Array, Float64Array, StringArray};
++    use arrow_schema::{Field, Schema};
++    use vgi::arguments::Arguments;
++
++    #[test]
++    fn both_strict_functions_expose_identical_authoritative_catalog_tags() {
++        for difference in [false, true] {
++            let metadata = StrictConvert { difference }.metadata();
++            let tags: std::collections::HashMap<_, _> = metadata.tags.into_iter().collect();
++            assert_eq!(
++                tags["units.catalog_v1_sha256"],
++                crate::unit_catalog_sha256()
++            );
++            assert!(tags.values().all(|v| v.len() <= 4000));
++            assert_eq!(tags["units.implementation_version"], crate::version());
++            assert_eq!(tags["units.contract_version"], "1");
++            assert_eq!(
++                tags["units.quantity_kind"],
++                if difference { "difference" } else { "absolute" }
++            );
++        }
++    }
++
++    fn run(
++        difference: bool,
++        values: Vec<Option<f64>>,
++        from: Vec<Option<&str>>,
++        to: Vec<Option<&str>>,
++    ) -> Result<ArrayRef> {
++        let schema = Arc::new(Schema::new(vec![
++            Field::new("value", DataType::Float64, true),
++            Field::new("from_unit", DataType::Utf8, true),
++            Field::new("to_unit", DataType::Utf8, true),
++        ]));
++        let batch = RecordBatch::try_new(
++            schema.clone(),
++            vec![
++                Arc::new(Float64Array::from(values)),
++                Arc::new(StringArray::from(from)),
++                Arc::new(StringArray::from(to)),
++            ],
++        )
++        .unwrap();
++        let function = StrictConvert { difference };
++        let bound = function.on_bind(&BindParams {
++            input_schema: Some(schema),
++            ..Default::default()
++        })?;
++        Ok(function
++            .process(
++                &process_params(bound.output_schema, Arguments::default()),
++                &batch,
++            )?
++            .column(0)
++            .clone())
++    }
++
++    #[test]
++    fn strict_linear_absolute_difference_and_null() {
++        for (difference, value, source, target, expected) in [
++            (false, 1.0, "mi", "km", 1.609344),
++            (false, -2.0, "kg", "g", -2000.0),
++            (false, 0.0, "C", "F", 32.0),
++            (false, 32.0, "F", "K", 273.15),
++            (true, 10.0, "C", "F", 18.0),
++            (true, -18.0, "F", "K", -10.0),
++        ] {
++            let out = run(
++                difference,
++                vec![Some(value), None],
++                vec![Some(source); 2],
++                vec![Some(target); 2],
++            )
++            .unwrap();
++            let result = out.as_any().downcast_ref::<Float64Array>().unwrap();
++            assert!((result.value(0) - expected).abs() < 1e-9);
++            assert!(result.is_null(1));
++        }
++    }
++
++    #[test]
++    fn invalid_units_reject_even_null_values() {
++        for difference in [false, true] {
++            for value in [None, Some(1.0)] {
++                for (from, to) in [
++                    (Some("unknown"), Some("m")),
++                    (Some("m"), Some("unknown")),
++                    (Some("m"), Some("kg")),
++                    (None, Some("m")),
++                    (Some("m"), None),
++                ] {
++                    assert!(run(difference, vec![value], vec![from], vec![to]).is_err());
++                }
++            }
++        }
++    }
++
++    #[test]
++    fn nonfinite_and_overflow_reject() {
++        for difference in [false, true] {
++            for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, f64::MAX] {
++                assert!(run(
++                    difference,
++                    vec![Some(value)],
++                    vec![Some("km")],
++                    vec![Some("m")]
++                )
++                .is_err());
++            }
++        }
++    }
++
++    #[test]
++    fn mixed_units_large_batch_preserves_order_and_nulls() {
++        let n = 8193;
++        let out = run(
++            false,
++            (0..n)
++                .map(|i| if i % 7 == 0 { None } else { Some(i as f64) })
++                .collect(),
++            (0..n)
++                .map(|i| Some(if i % 2 == 0 { "m" } else { "cm" }))
++                .collect(),
++            vec![Some("m"); n],
++        )
++        .unwrap();
++        let result = out.as_any().downcast_ref::<Float64Array>().unwrap();
++        assert_eq!(result.len(), n);
++        for i in 0..n {
++            if i % 7 == 0 {
++                assert!(result.is_null(i));
++            } else {
++                assert!(
++                    (result.value(i) - i as f64 * if i % 2 == 0 { 1.0 } else { 0.01 }).abs() < 1e-9
++                );
++            }
++        }
++    }
++}
+diff --git a/crates/units-worker/src/table/mod.rs b/crates/units-worker/src/table/mod.rs
+index 80e1138..9f91d71 100644
+--- a/crates/units-worker/src/table/mod.rs
++++ b/crates/units-worker/src/table/mod.rs
+@@ -1,6 +1,7 @@
+ //! Table functions exposed by the units worker, registered under `units.main`.
+ 
+ mod supported;
++mod unit_catalog;
+ 
+ use std::sync::Arc;
+ 
+@@ -100,17 +101,127 @@ pub fn supported_units_table() -> CatTable {
+         ("vgi.category".to_string(), "Discovery".to_string()),
+         (
+             "vgi.example_queries".to_string(),
+-            r#"[
+-  {
+-    "description": "List the length units and their SI base unit.",
+-    "sql": "SELECT unit, base_unit FROM units.main.supported_units WHERE dimension = 'length' ORDER BY unit"
+-  },
+-  {
+-    "description": "Count how many units exist in each dimension.",
+-    "sql": "SELECT dimension, count(*) AS n FROM units.main.supported_units GROUP BY dimension ORDER BY n DESC"
+-  }
+-]"#
+-            .to_string(),
++            crate::meta::example_queries_json(&[
++                (
++                    "List the length units and their SI base unit.",
++                    "SELECT unit, base_unit FROM units.main.supported_units WHERE dimension = 'length' ORDER BY unit",
++                ),
++                (
++                    "Count how many units exist in each dimension.",
++                    "SELECT dimension, count(*) AS n FROM units.main.supported_units \
++                     GROUP BY dimension ORDER BY n DESC, dimension",
++                ),
++                crate::examples::MILE_IN_EVERY_LENGTH_UNIT,
++            ]),
++        ),
++    ];
++    t
++}
++
++/// Build the catalog `CatTable` that exposes `unit_catalog` as a regular table
++/// (`SELECT * FROM units.main.unit_catalog`), backed by the
++/// [`unit_catalog::UnitCatalog`] scan function. `unit` is the primary key and
++/// every column is NOT NULL.
++pub fn unit_catalog_table() -> CatTable {
++    let mut t = CatTable::with_function(
++        "unit_catalog",
++        unit_catalog::output_schema(),
++        Arc::new(unit_catalog::UnitCatalog),
++        Some(
++            "Authoritative, versioned unit definitions (factor and offset per exact unit string) \
++             behind the strict conversion functions."
++                .to_string(),
++        ),
++        Some(crate::units::unit_count() as i64),
++    );
++    let columns = [
++        "unit",
++        "dimension",
++        "base_unit",
++        "quantity_space",
++        "factor",
++        "offset",
++        "implementation_version",
++        "contract_version",
++    ];
++    let mut records: Vec<(String, ConstraintKind, &str)> = vec![
++        (
++            "unit_catalog.pk".to_string(),
++            ConstraintKind::PrimaryKey,
++            "unit",
++        ),
++        (
++            "unit_catalog.unit.unique".to_string(),
++            ConstraintKind::Unique,
++            "unit",
++        ),
++    ];
++    records.extend(columns.iter().map(|c| {
++        (
++            format!("unit_catalog.{c}.not_null"),
++            ConstraintKind::NotNull,
++            *c,
++        )
++    }));
++    t.constraints = records
++        .into_iter()
++        .map(|(id, kind, column)| {
++            constraint_record(
++                &ConstraintRecord::new(&["main"], "unit_catalog", &id, kind)
++                    .with_columns(&[&[column]])
++                    .enforced(),
++            )
++            .expect("valid constraint record")
++        })
++        .collect();
++    // Keep the `unit_catalog()` call form callable alongside the bare table.
++    t.expose_scan = true;
++    t.tags = vec![
++        ("vgi.title".to_string(), "Unit Definition Catalog".to_string()),
++        (
++            "vgi.doc_llm".to_string(),
++            "The authoritative unit definitions behind convert_strict and \
++             convert_difference_strict: one row per exact unit string with its dimension, SI base \
++             unit, scale factor and offset (base = value * factor + offset; differences use the \
++             factor only), plus the worker implementation and contract versions. Query it to \
++             audit or approve the exact constants a conversion uses."
++                .to_string(),
++        ),
++        (
++            "vgi.doc_md".to_string(),
++            "# unit_catalog\n\nVersioned, authoritative unit definitions for administrative \
++             approval of strict conversions. One row per exact unit string with `unit`, \
++             `dimension`, `base_unit`, `quantity_space`, `factor`, `offset` (`base = value * factor + offset`; \
++             differences use `factor` only), `implementation_version` and `contract_version`. \
++             Quote the `\"offset\"` column, which is a SQL keyword."
++                .to_string(),
++        ),
++        (
++            "vgi.keywords".to_string(),
++            crate::meta::keywords_json(
++                "unit catalog, unit definitions, conversion factor, offset, version, audit, \
++                 approval, governance, strict conversion",
++            ),
++        ),
++        ("domain".to_string(), "units-and-measurement".to_string()),
++        ("category".to_string(), "discovery".to_string()),
++        ("topic".to_string(), "unit-definitions".to_string()),
++        ("vgi.category".to_string(), "Discovery".to_string()),
++        (
++            "vgi.example_queries".to_string(),
++            crate::meta::example_queries_json(&[
++                (
++                    "Show the factor and offset that define each temperature unit.",
++                    "SELECT unit, factor, \"offset\" FROM units.main.unit_catalog \
++                     WHERE dimension = 'temperature' ORDER BY unit",
++                ),
++                (
++                    "Report the worker and contract versions the definitions belong to.",
++                    "SELECT DISTINCT implementation_version, contract_version \
++                     FROM units.main.unit_catalog ORDER BY ALL",
++                ),
++                crate::examples::AUDIT_STRICT_AGAINST_CATALOG,
++            ]),
+         ),
+     ];
+     t
+diff --git a/crates/units-worker/src/table/supported.rs b/crates/units-worker/src/table/supported.rs
+index ee716ed..7ef20f0 100644
+--- a/crates/units-worker/src/table/supported.rs
++++ b/crates/units-worker/src/table/supported.rs
+@@ -17,32 +17,37 @@ use crate::units;
+ /// self-contained and re-runnable against an attached `units` worker. We omit
+ /// `expected_result` deliberately — the linter only needs each query to execute
+ /// cleanly, and pinning exact floating-point output would be brittle.
+-const EXECUTABLE_EXAMPLES: &str = r#"[
+-  {
+-    "description": "Convert a marathon distance from miles to kilometres.",
+-    "sql": "SELECT units.main.convert(26.2, 'mi', 'km') AS km"
+-  },
+-  {
+-    "description": "Express 1 GiB in bytes via the SI base unit.",
+-    "sql": "SELECT units.main.to_base(1, 'GiB') AS bytes"
+-  },
+-  {
+-    "description": "Look up the physical dimension of a unit.",
+-    "sql": "SELECT units.main.dimension('kWh') AS dim"
+-  },
+-  {
+-    "description": "Check whether two units can be converted between.",
+-    "sql": "SELECT units.main.compatible('mi', 'km') AS ok"
+-  },
+-  {
+-    "description": "Parse a quantity string into a (value, unit) struct.",
+-    "sql": "SELECT units.main.parse_quantity('5 km') AS q"
+-  },
+-  {
+-    "description": "Discover the units in the length dimension.",
+-    "sql": "SELECT unit, base_unit FROM units.main.supported_units() WHERE dimension = 'length' ORDER BY unit LIMIT 5"
+-  }
+-]"#;
++fn executable_examples() -> String {
++    crate::meta::example_queries_json(&[
++        (
++            "Convert a marathon distance from miles to kilometres.",
++            "SELECT units.main.convert(26.2, 'mi', 'km') AS km",
++        ),
++        (
++            "Express 1 GiB in bytes via the SI base unit.",
++            "SELECT units.main.to_base(1, 'GiB') AS bytes",
++        ),
++        (
++            "Look up the physical dimension of a unit.",
++            "SELECT units.main.dimension('kWh') AS dim",
++        ),
++        (
++            "Check whether two units can be converted between.",
++            "SELECT units.main.compatible('mi', 'km') AS ok",
++        ),
++        (
++            "Parse a quantity string into a (value, unit) struct.",
++            "SELECT units.main.parse_quantity('5 km') AS q",
++        ),
++        (
++            "Discover the units in the length dimension.",
++            "SELECT unit, base_unit FROM units.main.supported_units() \
++             WHERE dimension = 'length' ORDER BY unit LIMIT 5",
++        ),
++        // Composed (offline + deterministic): supported_units feeding convert.
++        crate::examples::MILE_IN_EVERY_LENGTH_UNIT,
++    ])
++}
+ 
+ pub struct SupportedUnits;
+ 
+@@ -109,7 +114,7 @@ impl TableFunction for SupportedUnits {
+ ]"#
+             .into(),
+         ));
+-        tags.push(("vgi.executable_examples".into(), EXECUTABLE_EXAMPLES.into()));
++        tags.push(("vgi.executable_examples".into(), executable_examples()));
+         FunctionMetadata {
+             description: "List every supported unit with its dimension and SI base unit".into(),
+             tags,
+diff --git a/crates/units-worker/src/table/unit_catalog.rs b/crates/units-worker/src/table/unit_catalog.rs
+new file mode 100644
+index 0000000..dde1252
+--- /dev/null
++++ b/crates/units-worker/src/table/unit_catalog.rs
+@@ -0,0 +1,262 @@
++//! `unit_catalog() -> (unit, dimension, base_unit, quantity_space, factor, offset,
++//! implementation_version, contract_version)` — the versioned, authoritative
++//! unit definitions behind the strict conversion functions, for administrative
++//! approval: `base = value * factor + offset`, or `base_difference = value *
++//! factor` for differences. One row per exact recognized unit string.
++
++use arrow_array::{ArrayRef, Float64Array, RecordBatch, StringArray};
++use arrow_schema::{DataType, Field, Schema, SchemaRef};
++use std::sync::Arc;
++use vgi::table_function::{TableFunction, TableProducer};
++use vgi::{ArgSpec, BindParams, BindResponse, FunctionMetadata, ProcessParams};
++use vgi_rpc::{OutputCollector, Result, RpcError};
++
++/// The strict-conversion contract version reported in every row.
++pub const CONTRACT_VERSION: &str = "1";
++
++/// Guaranteed-runnable, catalog-qualified examples (VGI509).
++const EXECUTABLE_EXAMPLES: &str = r#"[
++  {
++    "description": "Show the factor and offset that define each temperature unit.",
++    "sql": "SELECT unit, factor, \"offset\" FROM units.main.unit_catalog() WHERE dimension = 'temperature' ORDER BY unit"
++  },
++  {
++    "description": "Report the worker and contract versions the definitions belong to.",
++    "sql": "SELECT DISTINCT implementation_version, contract_version FROM units.main.unit_catalog()"
++  }
++]"#;
++
++pub struct UnitCatalog;
++
++fn commented(name: &str, ty: DataType, comment: &str) -> Field {
++    Field::new(name, ty, false).with_metadata(std::collections::HashMap::from([(
++        "comment".to_string(),
++        comment.to_string(),
++    )]))
++}
++
++/// The columns produced by `unit_catalog` — shared by the table function's
++/// `on_bind` and the catalog table `units.main.unit_catalog`.
++pub fn output_schema() -> SchemaRef {
++    Arc::new(Schema::new(vec![
++        commented(
++            "unit",
++            DataType::Utf8,
++            "The exact recognized unit string, e.g. 'km', 'MB', '°C'. Case-significant.",
++        ),
++        commented(
++            "dimension",
++            DataType::Utf8,
++            "The physical dimension the unit measures, e.g. 'length' or 'temperature'.",
++        ),
++        commented(
++            "base_unit",
++            DataType::Utf8,
++            "The SI base unit of the dimension that conversions pass through, e.g. 'm'.",
++        ),
++        commented(
++            "quantity_space",
++            DataType::Utf8,
++            "'affine' for temperature units (offsets apply to absolute values and cancel for \
++             differences); 'linear' for every other dimension.",
++        ),
++        commented(
++            "factor",
++            DataType::Float64,
++            "Scale factor to the base unit: base = value * factor + offset. Finite and positive.",
++        ),
++        commented(
++            "offset",
++            DataType::Float64,
++            "Additive offset to the base unit (non-zero only for affine temperature scales); \
++             ignored when converting differences.",
++        ),
++        commented(
++            "implementation_version",
++            DataType::Utf8,
++            "The worker software version that serves these definitions.",
++        ),
++        commented(
++            "contract_version",
++            DataType::Utf8,
++            "The strict-conversion contract version these definitions satisfy.",
++        ),
++    ]))
++}
++
++impl TableFunction for UnitCatalog {
++    fn name(&self) -> &str {
++        "unit_catalog"
++    }
++
++    fn metadata(&self) -> FunctionMetadata {
++        let mut tags = crate::meta::object_tags(
++            "Unit Definition Catalog",
++            "The authoritative, versioned unit definitions used by convert_strict and \
++             convert_difference_strict: one row per exact unit string with its dimension, SI \
++             base unit, scale factor and offset (base = value * factor + offset; differences use \
++             the factor only), plus the worker implementation and contract versions. Use it to \
++             audit or approve the exact conversion constants.",
++            "Versioned unit definitions for conversion approval. Columns: `unit`, `dimension`, \
++             `base_unit`, `quantity_space`, `factor`, `offset`, `implementation_version`, `contract_version`.",
++            "unit catalog, unit definitions, conversion factor, offset, version, audit, approval, \
++             governance, strict conversion",
++            "Discovery",
++            "table/unit_catalog.rs",
++        );
++        tags.push((
++            "vgi.result_columns_schema".into(),
++            r#"[
++  {"name": "unit", "type": "VARCHAR", "description": "The exact recognized unit string."},
++  {"name": "dimension", "type": "VARCHAR", "description": "The physical dimension the unit measures."},
++  {"name": "base_unit", "type": "VARCHAR", "description": "The SI base unit of the dimension."},
++  {"name": "quantity_space", "type": "VARCHAR", "description": "'affine' for temperature units, 'linear' otherwise."},
++  {"name": "factor", "type": "DOUBLE", "description": "Scale factor: base = value * factor + offset."},
++  {"name": "offset", "type": "DOUBLE", "description": "Additive offset to the base unit (temperature scales only)."},
++  {"name": "implementation_version", "type": "VARCHAR", "description": "The worker software version."},
++  {"name": "contract_version", "type": "VARCHAR", "description": "The strict-conversion contract version."}
++]"#
++            .into(),
++        ));
++        tags.push(("vgi.executable_examples".into(), EXECUTABLE_EXAMPLES.into()));
++        FunctionMetadata {
++            description: "Versioned unit definitions for administrative validation: \
++                          base=value*factor+offset; differences use factor only"
++                .into(),
++            tags,
++            ..Default::default()
++        }
++    }
++
++    fn argument_specs(&self) -> Vec<ArgSpec> {
++        Vec::new()
++    }
++
++    fn on_bind(&self, _: &BindParams) -> Result<BindResponse> {
++        Ok(BindResponse {
++            output_schema: output_schema(),
++            opaque_data: Vec::new(),
++        })
++    }
++
++    fn producer(&self, params: &ProcessParams) -> Result<Box<dyn TableProducer>> {
++        Ok(Box::new(Producer {
++            schema: params.output_schema.clone(),
++            done: false,
++        }))
++    }
++}
++
++struct Producer {
++    schema: SchemaRef,
++    done: bool,
++}
++
++impl TableProducer for Producer {
++    fn next_batch(&mut self, _: &mut OutputCollector) -> Result<Option<RecordBatch>> {
++        if self.done {
++            return Ok(None);
++        }
++        self.done = true;
++        Ok(Some(catalog_batch(self.schema.clone())?))
++    }
++    // Single batch: the bounded static catalog is emitted in one RecordBatch,
++    // so there is no cursor to resume across HTTP turns.
++    fn resume_supported(&self) -> bool {
++        false
++    }
++}
++
++fn catalog_batch(schema: SchemaRef) -> Result<RecordBatch> {
++    let units = crate::units::supported_units();
++    let definitions: Vec<_> = units
++        .iter()
++        .map(|row| crate::units::lookup(row.unit).expect("catalog unit must resolve"))
++        .collect();
++    let columns: Vec<ArrayRef> = vec![
++        Arc::new(StringArray::from(
++            units.iter().map(|r| r.unit).collect::<Vec<_>>(),
++        )),
++        Arc::new(StringArray::from(
++            units.iter().map(|r| r.dimension).collect::<Vec<_>>(),
++        )),
++        Arc::new(StringArray::from(
++            units.iter().map(|r| r.base_unit).collect::<Vec<_>>(),
++        )),
++        Arc::new(StringArray::from(
++            definitions
++                .iter()
++                .map(|d| crate::unit_catalog_metadata::quantity_space(d.dimension))
++                .collect::<Vec<_>>(),
++        )),
++        Arc::new(Float64Array::from(
++            definitions.iter().map(|d| d.factor).collect::<Vec<_>>(),
++        )),
++        Arc::new(Float64Array::from(
++            definitions.iter().map(|d| d.offset).collect::<Vec<_>>(),
++        )),
++        Arc::new(StringArray::from(vec![crate::version(); units.len()])),
++        Arc::new(StringArray::from(vec![CONTRACT_VERSION; units.len()])),
++    ];
++    RecordBatch::try_new(schema, columns).map_err(|e| RpcError::runtime_error(e.to_string()))
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use serde_json::Value;
++    use std::collections::HashMap;
++
++    #[test]
++    fn complete_table_catalog_matches_scalar_metadata_and_engine() {
++        let batch = catalog_batch(output_schema()).unwrap();
++        let catalog: Value = serde_json::from_str(crate::unit_catalog_json()).unwrap();
++        let json_rows: HashMap<_, _> = catalog["units"]
++            .as_array()
++            .unwrap()
++            .iter()
++            .map(|row| (row["unit"].as_str().unwrap(), row))
++            .collect();
++        assert_eq!(batch.num_rows(), json_rows.len());
++        assert_eq!(batch.num_columns(), 8);
++        let strings = |col: usize| {
++            batch
++                .column(col)
++                .as_any()
++                .downcast_ref::<StringArray>()
++                .unwrap()
++        };
++        let doubles = |col: usize| {
++            batch
++                .column(col)
++                .as_any()
++                .downcast_ref::<Float64Array>()
++                .unwrap()
++        };
++        for row in 0..batch.num_rows() {
++            let unit = strings(0).value(row);
++            let definition = crate::units::lookup(unit).unwrap();
++            let json = json_rows[unit];
++            assert_eq!(strings(1).value(row), definition.dimension.name());
++            assert_eq!(strings(2).value(row), definition.dimension.base_unit());
++            assert_eq!(doubles(4).value(row).to_bits(), definition.factor.to_bits());
++            assert_eq!(doubles(5).value(row).to_bits(), definition.offset.to_bits());
++            assert_eq!(strings(1).value(row), json["dimension"].as_str().unwrap());
++            assert_eq!(
++                strings(3).value(row),
++                json["quantity_space"].as_str().unwrap()
++            );
++            assert_eq!(strings(2).value(row), json["base_unit"].as_str().unwrap());
++            assert_eq!(
++                doubles(4).value(row).to_bits(),
++                json["factor"].as_f64().unwrap().to_bits()
++            );
++            assert_eq!(
++                doubles(5).value(row).to_bits(),
++                json["offset"].as_f64().unwrap().to_bits()
++            );
++            assert_eq!(strings(6).value(row), crate::version());
++            assert_eq!(strings(7).value(row), "1");
++        }
++    }
++}
+diff --git a/crates/units-worker/src/unit_catalog_metadata.rs b/crates/units-worker/src/unit_catalog_metadata.rs
+new file mode 100644
+index 0000000..dc70821
+--- /dev/null
++++ b/crates/units-worker/src/unit_catalog_metadata.rs
+@@ -0,0 +1,198 @@
++//! Deterministic metadata for validating a governed model without invoking a
++//! conversion or a table producer. Definitions come only from the unit engine.
++
++use serde::Serialize;
++use sha2::{Digest, Sha256};
++use std::sync::OnceLock;
++
++const MAX_CATALOG_BYTES: usize = 256 * 1024;
++const MAX_CATALOG_UNITS: usize = 4096;
++
++// Struct field order is the serialized contract; rows use UTF-8 byte ordering.
++#[derive(Serialize)]
++struct Catalog {
++    version: u32,
++    implementation_version: &'static str,
++    units: Vec<Unit>,
++}
++
++#[derive(Serialize)]
++struct Unit {
++    unit: &'static str,
++    dimension: &'static str,
++    base_unit: &'static str,
++    quantity_space: &'static str,
++    factor: f64,
++    offset: f64,
++}
++
++fn serialize_catalog() -> String {
++    let mut definitions = crate::units::supported_units();
++    definitions.sort_by(|a, b| a.unit.as_bytes().cmp(b.unit.as_bytes()));
++    assert!(definitions.len() <= MAX_CATALOG_UNITS);
++    assert!(definitions
++        .windows(2)
++        .all(|rows| rows[0].unit != rows[1].unit));
++    let units = definitions
++        .into_iter()
++        .map(|row| {
++            let definition = crate::units::lookup(row.unit).expect("catalog unit must resolve");
++            assert!(definition.factor.is_finite() && definition.factor > 0.0);
++            assert!(definition.offset.is_finite());
++            Unit {
++                unit: row.unit,
++                dimension: row.dimension,
++                base_unit: row.base_unit,
++                quantity_space: quantity_space(definition.dimension),
++                factor: definition.factor,
++                offset: definition.offset,
++            }
++        })
++        .collect();
++    let serialized = serde_json::to_string(&Catalog {
++        version: 1,
++        implementation_version: crate::version(),
++        units,
++    })
++    .expect("finite static unit definitions must serialize");
++    assert!(serialized.len() <= MAX_CATALOG_BYTES);
++    serialized
++}
++
++/// The quantity space of a dimension: `affine` for temperature (offsets apply
++/// to absolute values and cancel for differences), `linear` otherwise. It
++/// belongs to the dimension, not the offset: Kelvin and Rankine are affine even
++/// with a zero offset.
++pub fn quantity_space(dimension: crate::units::Dimension) -> &'static str {
++    if dimension == crate::units::Dimension::Temperature {
++        "affine"
++    } else {
++        "linear"
++    }
++}
++
++/// Lower-case hex SHA-256 of the exact [`unit_catalog_json`] bytes, published
++/// as the strict scalars' `units.catalog_v1_sha256` tag. The full JSON is too
++/// large for a tag (agent tools bound each value to 4,000 characters), so a
++/// governed host verifies an exported copy against this digest instead.
++pub fn unit_catalog_sha256() -> &'static str {
++    static DIGEST: OnceLock<String> = OnceLock::new();
++    DIGEST.get_or_init(|| {
++        Sha256::digest(unit_catalog_json().as_bytes())
++            .iter()
++            .map(|b| format!("{b:02x}"))
++            .collect()
++    })
++}
++
++/// Complete `units.catalog_v1` JSON document, with exact case-preserving
++/// aliases and versioned binary64 factors. At most 4096 rows and 256 KiB UTF-8.
++/// The JSON is compact, byte deterministic, and has no trailing newline.
++pub fn unit_catalog_json() -> &'static str {
++    static CATALOG: OnceLock<String> = OnceLock::new();
++    CATALOG.get_or_init(serialize_catalog).as_str()
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use serde_json::Value;
++
++    #[test]
++    fn catalog_is_deterministic_bounded_sorted_and_complete() {
++        let text = unit_catalog_json();
++        assert_eq!(text, serialize_catalog());
++        assert_eq!(text, serialize_catalog());
++        assert!(text.len() <= MAX_CATALOG_BYTES);
++        assert!(!text.ends_with('\n'));
++        assert!(text.starts_with(&format!(
++            "{{\"version\":1,\"implementation_version\":\"{}\",\"units\":[",
++            crate::version()
++        )));
++        let catalog: Value = serde_json::from_str(text).unwrap();
++        assert_eq!(catalog.as_object().unwrap().len(), 3);
++        assert_eq!(catalog["version"], 1);
++        assert_eq!(catalog["implementation_version"], crate::version());
++        let rows = catalog["units"].as_array().unwrap();
++        assert_eq!(rows.len(), crate::units::unit_count());
++        assert!(rows
++            .windows(2)
++            .all(|r| r[0]["unit"].as_str().unwrap().as_bytes()
++                < r[1]["unit"].as_str().unwrap().as_bytes()));
++        for row in rows {
++            assert_eq!(row.as_object().unwrap().len(), 6);
++            let definition = crate::units::lookup(row["unit"].as_str().unwrap()).unwrap();
++            assert_eq!(row["dimension"], definition.dimension.name());
++            assert_eq!(row["base_unit"], definition.dimension.base_unit());
++            assert_eq!(
++                row["factor"].as_f64().unwrap().to_bits(),
++                definition.factor.to_bits()
++            );
++            assert_eq!(
++                row["offset"].as_f64().unwrap().to_bits(),
++                definition.offset.to_bits()
++            );
++            assert_eq!(
++                row["quantity_space"],
++                if definition.dimension == crate::units::Dimension::Temperature {
++                    "affine"
++                } else {
++                    "linear"
++                }
++            );
++        }
++    }
++
++    #[test]
++    fn digest_is_hex_sha256_of_exact_json() {
++        let digest = unit_catalog_sha256();
++        assert_eq!(digest.len(), 64);
++        assert!(digest
++            .chars()
++            .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()));
++        let again: String = Sha256::digest(unit_catalog_json().as_bytes())
++            .iter()
++            .map(|b| format!("{b:02x}"))
++            .collect();
++        assert_eq!(digest, again);
++    }
++
++    #[test]
++    fn catalog_preserves_case_significant_aliases_and_affine_zero_offsets() {
++        let catalog: Value = serde_json::from_str(unit_catalog_json()).unwrap();
++        let rows = catalog["units"].as_array().unwrap();
++        let find = |unit| rows.iter().find(|r| r["unit"] == unit).unwrap();
++        assert_eq!(find("B")["factor"], 1.0);
++        assert_eq!(find("b")["factor"], 0.125);
++        assert_eq!(find("MB")["factor"], 1_000_000.0);
++        assert_eq!(find("Mb")["factor"], 125_000.0);
++        for unit in ["K", "kelvin", "R", "rankine"] {
++            assert_eq!(find(unit)["quantity_space"], "affine");
++            assert_eq!(find(unit)["offset"], 0.0);
++        }
++        assert!(rows.iter().all(|r| r["unit"] != "KM"));
++        assert!(crate::units::lookup("KM").is_some());
++    }
++
++    #[test]
++    fn catalog_bases_are_self_consistent_and_linear_offsets_are_zero() {
++        let catalog: Value = serde_json::from_str(unit_catalog_json()).unwrap();
++        let rows: std::collections::HashMap<_, _> = catalog["units"]
++            .as_array()
++            .unwrap()
++            .iter()
++            .map(|row| (row["unit"].as_str().unwrap(), row))
++            .collect();
++        for row in rows.values() {
++            let base = rows[row["base_unit"].as_str().unwrap()];
++            assert_eq!(base["unit"], base["base_unit"]);
++            assert_eq!(base["dimension"], row["dimension"]);
++            assert_eq!(base["quantity_space"], row["quantity_space"]);
++            assert_eq!(base["factor"], 1.0);
++            assert_eq!(base["offset"], 0.0);
++            if row["quantity_space"] == "linear" {
++                assert_eq!(row["offset"], 0.0);
++            }
++        }
++    }
++}
+diff --git a/crates/units-worker/src/units.rs b/crates/units-worker/src/units.rs
+index fc35638..672fae5 100644
+--- a/crates/units-worker/src/units.rs
++++ b/crates/units-worker/src/units.rs
+@@ -186,6 +186,24 @@ pub fn convert(value: f64, from: &str, to: &str) -> Result<f64, UnitError> {
+     Ok((base - t.offset) / t.factor)
+ }
+ 
++/// Convert a quantity *difference* (an interval, e.g. a 10 °C rise) from `from`
++/// units to `to` units. Affine offsets cancel for differences, so only the scale
++/// factors apply: a 10 °C change is an 18 °F change, not 50 °F. Shares the same
++/// unit definitions and error contract as [`convert`].
++pub fn convert_difference(value: f64, from: &str, to: &str) -> Result<f64, UnitError> {
++    let f = lookup(from).ok_or_else(|| UnitError::UnknownUnit(from.trim().to_string()))?;
++    let t = lookup(to).ok_or_else(|| UnitError::UnknownUnit(to.trim().to_string()))?;
++    if f.dimension != t.dimension {
++        return Err(UnitError::Incompatible {
++            from: from.trim().to_string(),
++            from_dim: f.dimension.name(),
++            to: to.trim().to_string(),
++            to_dim: t.dimension.name(),
++        });
++    }
++    Ok(value * f.factor / t.factor)
++}
++
+ /// The value expressed in the SI base unit of its dimension. Unknown unit →
+ /// `Err(UnknownUnit)`.
+ pub fn to_base(value: f64, unit: &str) -> Result<f64, UnitError> {

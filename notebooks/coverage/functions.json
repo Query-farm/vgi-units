@@ -1,0 +1,237 @@
+{
+  "query": "SELECT * FROM duckdb_functions() WHERE database_name='units' ORDER BY schema_name,function_name",
+  "columns": [
+    "database_name",
+    "database_oid",
+    "schema_name",
+    "function_name",
+    "alias_of",
+    "function_type",
+    "description",
+    "comment",
+    "tags",
+    "return_type",
+    "parameters",
+    "parameter_types",
+    "varargs",
+    "macro_definition",
+    "has_side_effects",
+    "internal",
+    "extension_name",
+    "function_oid",
+    "examples",
+    "stability",
+    "categories"
+  ],
+  "rows": [
+    [
+      "units",
+      "22592",
+      "main",
+      "compatible",
+      null,
+      "scalar",
+      "Whether two units share a dimension (i.e. can be converted between). Unknown units are never compatible",
+      null,
+      {
+        "vgi.category": "Analysis",
+        "vgi.doc_llm": "Return TRUE when two units share the same physical dimension and can therefore be converted between one another (e.g. 'mi' and 'km'), and FALSE otherwise. Unknown units are never compatible. Returns NULL when either operand is NULL.",
+        "vgi.doc_md": "Check whether two units share a dimension (are convertible), e.g. `compatible('mi', 'km')` \u2192 true.",
+        "vgi.example_queries": "[{\"description\":\"Check whether two units can be converted between (true).\",\"sql\":\"SELECT units.main.compatible('mi', 'km') AS ok\"},{\"description\":\"Guard a conversion: only convert rows whose units are compatible.\",\"sql\":\"SELECT units.main.compatible('kg', 'lb') AS ok\"}]",
+        "vgi.keywords": "[\"compatible\",\"convertible\",\"same dimension\",\"can convert\",\"comparable units\",\"dimensional check\",\"validate units\"]",
+        "vgi.title": "Units Compatible?"
+      },
+      "BOOLEAN",
+      [
+        "unit_a",
+        "unit_b"
+      ],
+      [
+        "VARCHAR",
+        "VARCHAR"
+      ],
+      null,
+      null,
+      false,
+      true,
+      null,
+      22726,
+      [],
+      "CONSISTENT",
+      []
+    ],
+    [
+      "units",
+      "22592",
+      "main",
+      "convert",
+      null,
+      "scalar",
+      "Convert a value between two units of the same dimension (NULL if a unit is unknown; ERROR if the dimensions are incompatible)",
+      null,
+      {
+        "vgi.category": "Conversion",
+        "vgi.doc_llm": "Convert a numeric value from one unit to another unit of the same physical dimension, e.g. miles to kilometres, pounds to kilograms, or \u00b0C to \u00b0F. Returns NULL when either unit string is unknown, and raises an error when the two units belong to incompatible dimensions (e.g. km to kg).",
+        "vgi.doc_md": "Convert a value between two units of the same dimension, e.g. `convert(26.2, 'mi', 'km')`.",
+        "vgi.example_queries": "[{\"description\":\"Convert a marathon distance from miles to kilometres.\",\"sql\":\"SELECT units.main.convert(26.2, 'mi', 'km') AS km\"},{\"description\":\"Convert a body temperature from Celsius to Fahrenheit (affine, offset-aware).\",\"sql\":\"SELECT units.main.convert(37, '\u00b0C', '\u00b0F') AS fahrenheit\"}]",
+        "vgi.keywords": "[\"convert\",\"conversion\",\"unit conversion\",\"change units\",\"miles to km\",\"pounds to kg\",\"celsius to fahrenheit\",\"length\",\"mass\",\"temperature\",\"scale\"]",
+        "vgi.title": "Convert Units"
+      },
+      "DOUBLE",
+      [
+        "value",
+        "from_unit",
+        "to_unit"
+      ],
+      [
+        "ANY",
+        "VARCHAR",
+        "VARCHAR"
+      ],
+      null,
+      null,
+      false,
+      true,
+      null,
+      22727,
+      [],
+      "CONSISTENT",
+      []
+    ],
+    [
+      "units",
+      "22592",
+      "main",
+      "dimension",
+      null,
+      "scalar",
+      "Return the physical dimension of a unit ('length'|'mass'|'time'|\u2026), or NULL if the unit is unknown",
+      null,
+      {
+        "vgi.category": "Analysis",
+        "vgi.doc_llm": "Return the physical dimension of a unit as a lowercase name such as 'length', 'mass', 'time', 'energy', or 'data'. Returns NULL when the unit string is unknown.",
+        "vgi.doc_md": "Return the physical dimension of a unit, e.g. `dimension('kWh')` \u2192 'energy'.",
+        "vgi.example_queries": "[{\"description\":\"Identify the physical dimension of a unit (energy).\",\"sql\":\"SELECT units.main.dimension('kWh') AS dim\"},{\"description\":\"Group a column of unit strings by the dimension they measure.\",\"sql\":\"SELECT units.main.dimension(u) AS dim, count(*) AS n FROM (VALUES ('mi'), ('km'), ('kg'), ('lb')) AS t(u) GROUP BY dim ORDER BY dim\"}]",
+        "vgi.keywords": "[\"dimension\",\"physical dimension\",\"quantity kind\",\"length\",\"mass\",\"time\",\"energy\",\"data\",\"classify unit\",\"what is this unit\"]",
+        "vgi.title": "Unit Dimension"
+      },
+      "VARCHAR",
+      [
+        "unit"
+      ],
+      [
+        "VARCHAR"
+      ],
+      null,
+      null,
+      false,
+      true,
+      null,
+      22728,
+      [],
+      "CONSISTENT",
+      []
+    ],
+    [
+      "units",
+      "22592",
+      "main",
+      "parse_quantity",
+      null,
+      "scalar",
+      "Parse quantity text such as the string `5 km` into a `STRUCT(value DOUBLE, unit VARCHAR)`; NULL if unparseable or the unit is unknown",
+      null,
+      {
+        "vgi.category": "Parsing",
+        "vgi.doc_llm": "Parse free-form quantity text \u2014 a leading number followed by a recognized unit, such as the string `5 km` \u2014 into a `STRUCT(value DOUBLE, unit VARCHAR)`. Returns a NULL struct when the text has no number or the unit is unrecognized.",
+        "vgi.doc_md": "Parse quantity text into a `(value, unit)` struct, e.g. `parse_quantity('5 km')` \u2192 `{value: 5.0, unit: 'km'}`.",
+        "vgi.example_queries": "[{\"description\":\"Parse a quantity string into a (value, unit) struct.\",\"sql\":\"SELECT units.main.parse_quantity('5 km') AS q\"},{\"description\":\"Parse a free-text quantity and convert it to another unit in one query.\",\"sql\":\"WITH q AS (SELECT units.main.parse_quantity('26.2 mi') AS p) SELECT units.main.convert((p).value, (p).unit, 'km') AS km FROM q\"}]",
+        "vgi.keywords": "[\"parse\",\"parse quantity\",\"split value and unit\",\"extract number\",\"tokenize quantity\",\"5 km\",\"value unit struct\"]",
+        "vgi.title": "Parse Quantity String"
+      },
+      "STRUCT(\"value\" DOUBLE, unit VARCHAR)",
+      [
+        "text"
+      ],
+      [
+        "VARCHAR"
+      ],
+      null,
+      null,
+      false,
+      true,
+      null,
+      22729,
+      [],
+      "CONSISTENT",
+      []
+    ],
+    [
+      "units",
+      "22592",
+      "main",
+      "supported_units",
+      null,
+      "table",
+      "List every supported unit with its dimension and SI base unit",
+      null,
+      {
+        "vgi.category": "Discovery",
+        "vgi.doc_llm": "List every unit string the worker recognizes, together with its physical dimension and the SI base unit of that dimension. Use it to discover which unit strings are valid inputs to convert, to_base, dimension, compatible, and parse_quantity.",
+        "vgi.doc_md": "List every supported unit with its dimension and SI base unit. Columns: `unit`, `dimension`, `base_unit`.",
+        "vgi.executable_examples": "[\n  {\n    \"description\": \"Convert a marathon distance from miles to kilometres.\",\n    \"sql\": \"SELECT units.main.convert(26.2, 'mi', 'km') AS km\"\n  },\n  {\n    \"description\": \"Express 1 GiB in bytes via the SI base unit.\",\n    \"sql\": \"SELECT units.main.to_base(1, 'GiB') AS bytes\"\n  },\n  {\n    \"description\": \"Look up the physical dimension of a unit.\",\n    \"sql\": \"SELECT units.main.dimension('kWh') AS dim\"\n  },\n  {\n    \"description\": \"Check whether two units can be converted between.\",\n    \"sql\": \"SELECT units.main.compatible('mi', 'km') AS ok\"\n  },\n  {\n    \"description\": \"Parse a quantity string into a (value, unit) struct.\",\n    \"sql\": \"SELECT units.main.parse_quantity('5 km') AS q\"\n  },\n  {\n    \"description\": \"Discover the units in the length dimension.\",\n    \"sql\": \"SELECT unit, base_unit FROM units.main.supported_units() WHERE dimension = 'length' ORDER BY unit LIMIT 5\"\n  }\n]",
+        "vgi.keywords": "[\"supported units\",\"list units\",\"available units\",\"unit catalog\",\"discovery\",\"what units\",\"dimension\",\"base unit\"]",
+        "vgi.result_columns_schema": "[\n  {\"name\": \"unit\", \"type\": \"VARCHAR\", \"description\": \"The recognized unit string, e.g. 'km', 'kWh', '\u00b0C'.\"},\n  {\"name\": \"dimension\", \"type\": \"VARCHAR\", \"description\": \"The physical dimension the unit measures, e.g. 'length', 'energy'.\"},\n  {\"name\": \"base_unit\", \"type\": \"VARCHAR\", \"description\": \"The SI base unit that all conversions in that dimension pass through, e.g. 'm', 'kg'.\"}\n]",
+        "vgi.title": "Supported Units Catalog"
+      },
+      null,
+      [],
+      [],
+      null,
+      null,
+      null,
+      true,
+      null,
+      22731,
+      [],
+      null,
+      []
+    ],
+    [
+      "units",
+      "22592",
+      "main",
+      "to_base",
+      null,
+      "scalar",
+      "Express a value in the SI base unit of its dimension (NULL if the unit is unknown)",
+      null,
+      {
+        "vgi.category": "Conversion",
+        "vgi.doc_llm": "Express a numeric value in the SI base unit of its dimension, e.g. centimetres to metres, grams to kilograms, or GiB to bytes. Returns NULL when the unit string is unknown.",
+        "vgi.doc_md": "Express a value in the SI base unit of its dimension, e.g. `to_base(100, 'cm')` \u2192 1.0 (metres).",
+        "vgi.example_queries": "[{\"description\":\"Express 100 centimetres in the SI base unit (metres).\",\"sql\":\"SELECT units.main.to_base(100, 'cm') AS metres\"},{\"description\":\"Reduce 1 GiB to bytes so mixed data sizes can be summed on a common base.\",\"sql\":\"SELECT units.main.to_base(1, 'GiB') AS bytes\"}]",
+        "vgi.keywords": "[\"to_base\",\"base unit\",\"SI\",\"normalize\",\"canonical unit\",\"metres\",\"kilograms\",\"bytes\",\"normalise units\"]",
+        "vgi.title": "Convert to SI Base Unit"
+      },
+      "DOUBLE",
+      [
+        "value",
+        "unit"
+      ],
+      [
+        "ANY",
+        "VARCHAR"
+      ],
+      null,
+      null,
+      false,
+      true,
+      null,
+      22730,
+      [],
+      "CONSISTENT",
+      []
+    ]
+  ]
+}

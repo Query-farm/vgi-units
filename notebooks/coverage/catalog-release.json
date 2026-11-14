@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "repository": "Query-farm/vgi-units",
+  "revision": "v0.4.0",
+  "captured_at": "2026-11-14T19:50:56.650803+00:00",
+  "default_schema": "main",
+  "scope": "all_public_functions_and_tables",
+  "complete": true,
+  "objects": [
+    {
+      "schema": "main",
+      "name": "compatible",
+      "kind": "function",
+      "signatures": [
+        "compatible(VARCHAR, VARCHAR) -> BOOLEAN"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "convert",
+      "kind": "function",
+      "signatures": [
+        "convert(ANY, VARCHAR, VARCHAR) -> DOUBLE"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "dimension",
+      "kind": "function",
+      "signatures": [
+        "dimension(VARCHAR) -> VARCHAR"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "parse_quantity",
+      "kind": "function",
+      "signatures": [
+        "parse_quantity(VARCHAR) -> STRUCT(\"value\" DOUBLE, unit VARCHAR)"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "supported_units",
+      "kind": "function",
+      "signatures": [
+        "supported_units() -> None"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "to_base",
+      "kind": "function",
+      "signatures": [
+        "to_base(ANY, VARCHAR) -> DOUBLE"
+      ],
+      "authentication": "none",
+      "access": "read"
+    },
+    {
+      "schema": "main",
+      "name": "supported_units",
+      "kind": "table",
+      "signatures": [
+        "TABLE"
+      ],
+      "authentication": "none",
+      "access": "read"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "coverage/functions.json",
+      "sha256": "a404c834c249fbc3b257b1908b4bb93d0f0451452446304ae53b91846c8e4bfa",
+      "description": "Complete real released runtime functions export"
+    },
+    {
+      "path": "coverage/tables.json",
+      "sha256": "eca79c88ee5bc94ac2a7286d41bdaf1444c3058fcb5eb5c5161331919a6add87",
+      "description": "Complete real released runtime tables export"
+    },
+    {
+      "path": "coverage/views.json",
+      "sha256": "f321ca96f8f6d9c2946e18cef5747ec8cf77dc6f8ded74fe11410d1b56af517e",
+      "description": "Complete real released runtime views export"
+    }
+  ]
+}

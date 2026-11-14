@@ -1,0 +1,10 @@
+Using CPython 3.14.4
+Creating virtual environment at: .venv
+   Updating https://github.com/Query-farm/vgi-example-notebooks (v0.3.13)
+    Updated https://github.com/Query-farm/vgi-example-notebooks (b108516e580e2d58dd72a2c4a0f23594c2d1e6f3)
+   Building vgi-example-notebooks @ git+https://github.com/Query-farm/vgi-example-notebooks@b108516e580e2d58dd72a2c4a0f23594c2d1e6f3
+      Built vgi-example-notebooks @ git+https://github.com/Query-farm/vgi-example-notebooks@b108516e580e2d58dd72a2c4a0f23594c2d1e6f3
+Installed 72 packages in 382ms
+Running 01_one_report_mixed_units.ipynb ...
+[IPKernelApp] WARNING | Kernel is running over TCP without encryption. All communication (including code and outputs) is sent in plain text and is susceptible to eavesdropping. Use IPC transport or launch with kernel manager-provisioned CurveZMQ keys to enable transport encryption.
+OK: 26 code cells, 3 charts, 66.7s

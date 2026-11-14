@@ -1,0 +1,10 @@
+{
+  "released_commit": "4c9264ad70da3a9a02cc034e07453400a2e4a15e",
+  "current_commit": "17e40333f38abaf149b78555c1966d1863bcd692",
+  "added_public_names": [
+    "convert_strict",
+    "convert_difference_strict",
+    "unit_catalog"
+  ],
+  "review": "Complete registration retains all six released names and adds two strict scalar functions plus the unit_catalog table/backing function. All new names are public read-only and need no credentials. The six existing callbacks, unit definitions and output fields remain unchanged; their diffs concern examples. units.rs adds a difference conversion routine for the new strict API; lib.rs also freezes catalog version. New features are absent from the latest published binary. No current source build or current runtime claim is made."
+}

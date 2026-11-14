@@ -1,0 +1,51 @@
+{
+  "query": "SELECT * FROM duckdb_tables() WHERE database_name='units' ORDER BY schema_name,table_name",
+  "columns": [
+    "database_name",
+    "database_oid",
+    "schema_name",
+    "schema_oid",
+    "table_name",
+    "table_oid",
+    "comment",
+    "tags",
+    "internal",
+    "temporary",
+    "has_primary_key",
+    "estimated_size",
+    "column_count",
+    "index_count",
+    "check_constraint_count",
+    "sql"
+  ],
+  "rows": [
+    [
+      "units",
+      22592,
+      "main",
+      22732,
+      "supported_units",
+      22792,
+      "Every unit string the worker recognizes, with its physical dimension and SI base unit.",
+      {
+        "category": "discovery",
+        "domain": "units-and-measurement",
+        "topic": "unit-catalog",
+        "vgi.category": "Discovery",
+        "vgi.doc_llm": "Every unit string the worker recognizes, each with its physical dimension and the SI base unit of that dimension. Query it to discover which unit strings are valid inputs to convert, to_base, dimension, compatible, and parse_quantity, or to filter the catalog by dimension.",
+        "vgi.doc_md": "# supported_units\n\nThe discovery table of every recognized unit string. One row per unit, with columns `unit` (the string, e.g. `km`), `dimension` (e.g. `length`), and `base_unit` (the SI base unit of that dimension, e.g. `m`). Use it to find valid unit inputs for the scalar functions, or `WHERE dimension = '\u2026'` to browse a single dimension.",
+        "vgi.example_queries": "[\n  {\n    \"description\": \"List the length units and their SI base unit.\",\n    \"sql\": \"SELECT unit, base_unit FROM units.main.supported_units WHERE dimension = 'length' ORDER BY unit\"\n  },\n  {\n    \"description\": \"Count how many units exist in each dimension.\",\n    \"sql\": \"SELECT dimension, count(*) AS n FROM units.main.supported_units GROUP BY dimension ORDER BY n DESC\"\n  }\n]",
+        "vgi.keywords": "[\"supported units\",\"list units\",\"available units\",\"unit catalog\",\"discovery\",\"what units\",\"dimension\",\"base unit\"]",
+        "vgi.title": "Supported Units Catalog"
+      },
+      false,
+      false,
+      true,
+      0,
+      3,
+      2,
+      0,
+      "CREATE TABLE supported_units(unit VARCHAR, dimension VARCHAR NOT NULL, base_unit VARCHAR NOT NULL, UNIQUE(unit), PRIMARY KEY(unit));"
+    ]
+  ]
+}
