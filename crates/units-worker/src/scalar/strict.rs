@@ -32,7 +32,7 @@ impl ScalarFunction for StrictConvert {
             &str,
             &str,
             &str,
-            [(&str, &str); 2],
+            &[(&str, &str)],
         ) = if self.difference {
             (
                 "Convert a finite quantity difference using scale factors without offsets; reject \
@@ -49,7 +49,7 @@ impl ScalarFunction for StrictConvert {
                  values raise an error.",
                 "convert_difference_strict, strict conversion, difference, delta, interval, \
                  temperature change, governed, complete results, unit conversion",
-                [
+                &[
                     (
                         "Convert a 10 degree Celsius temperature rise into Fahrenheit degrees.",
                         "SELECT units.main.convert_difference_strict(10, '°C', '°F') AS delta_f",
@@ -58,6 +58,7 @@ impl ScalarFunction for StrictConvert {
                         "Convert a 5 km difference in distance into miles.",
                         "SELECT units.main.convert_difference_strict(5, 'km', 'mi') AS delta_mi",
                     ),
+                    crate::examples::STRICT_READING_AND_RISE,
                 ],
             )
         } else {
@@ -75,7 +76,7 @@ impl ScalarFunction for StrictConvert {
                  error instead of yielding NULL.",
                 "convert_strict, strict conversion, governed, complete results, validated, \
                  unit conversion, miles to km, celsius to fahrenheit",
-                [
+                &[
                     (
                         "Strictly convert a marathon distance from miles to kilometres.",
                         "SELECT units.main.convert_strict(26.2, 'mi', 'km') AS km",
@@ -92,7 +93,7 @@ impl ScalarFunction for StrictConvert {
             crate::meta::object_tags(title, llm, md, keywords, "Conversion", "scalar/strict.rs");
         tags.push((
             "vgi.example_queries".into(),
-            crate::meta::example_queries_json(&examples),
+            crate::meta::example_queries_json(examples),
         ));
         tags.push(("units.contract_version".into(), "1".into()));
         tags.push((

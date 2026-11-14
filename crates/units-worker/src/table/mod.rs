@@ -101,17 +101,18 @@ pub fn supported_units_table() -> CatTable {
         ("vgi.category".to_string(), "Discovery".to_string()),
         (
             "vgi.example_queries".to_string(),
-            r#"[
-  {
-    "description": "List the length units and their SI base unit.",
-    "sql": "SELECT unit, base_unit FROM units.main.supported_units WHERE dimension = 'length' ORDER BY unit"
-  },
-  {
-    "description": "Count how many units exist in each dimension.",
-    "sql": "SELECT dimension, count(*) AS n FROM units.main.supported_units GROUP BY dimension ORDER BY n DESC"
-  }
-]"#
-            .to_string(),
+            crate::meta::example_queries_json(&[
+                (
+                    "List the length units and their SI base unit.",
+                    "SELECT unit, base_unit FROM units.main.supported_units WHERE dimension = 'length' ORDER BY unit",
+                ),
+                (
+                    "Count how many units exist in each dimension.",
+                    "SELECT dimension, count(*) AS n FROM units.main.supported_units \
+                     GROUP BY dimension ORDER BY n DESC, dimension",
+                ),
+                crate::examples::MILE_IN_EVERY_LENGTH_UNIT,
+            ]),
         ),
     ];
     t
@@ -208,17 +209,19 @@ pub fn unit_catalog_table() -> CatTable {
         ("vgi.category".to_string(), "Discovery".to_string()),
         (
             "vgi.example_queries".to_string(),
-            r#"[
-  {
-    "description": "Show the factor and offset that define each temperature unit.",
-    "sql": "SELECT unit, factor, \"offset\" FROM units.main.unit_catalog WHERE dimension = 'temperature' ORDER BY unit"
-  },
-  {
-    "description": "Report the worker and contract versions the definitions belong to.",
-    "sql": "SELECT DISTINCT implementation_version, contract_version FROM units.main.unit_catalog"
-  }
-]"#
-            .to_string(),
+            crate::meta::example_queries_json(&[
+                (
+                    "Show the factor and offset that define each temperature unit.",
+                    "SELECT unit, factor, \"offset\" FROM units.main.unit_catalog \
+                     WHERE dimension = 'temperature' ORDER BY unit",
+                ),
+                (
+                    "Report the worker and contract versions the definitions belong to.",
+                    "SELECT DISTINCT implementation_version, contract_version \
+                     FROM units.main.unit_catalog ORDER BY ALL",
+                ),
+                crate::examples::AUDIT_STRICT_AGAINST_CATALOG,
+            ]),
         ),
     ];
     t

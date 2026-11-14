@@ -29,6 +29,7 @@
 //! the `scalar/` and `table/` modules are thin Arrow adapters over it.
 
 mod arrow_io;
+mod examples;
 mod meta;
 mod scalar;
 mod table;
@@ -175,6 +176,18 @@ fn catalog_metadata(name: &str) -> CatalogModel {
                          contract version they belong to. Return one row with columns factor, \
                          offset, and contract_version.",
                     ),
+                    (
+                        "parsed_trip_total_km",
+                        "A trip log records three legs as free text: '3 mi', '5 km' and '800 m'. \
+                         Parse the legs and report the total distance in kilometres, rounded to 3 \
+                         decimal places. Return a single DOUBLE column named total_km.",
+                    ),
+                    (
+                        "length_units_longer_than_foot",
+                        "How many of the recognized length unit strings (each alias counts \
+                         separately) denote a length strictly longer than one foot? Return a \
+                         single BIGINT column named n.",
+                    ),
                 ]),
             ),
             ("vgi.author".to_string(), "Query.Farm".to_string()),
@@ -288,6 +301,14 @@ fn catalog_metadata(name: &str) -> CatalogModel {
                             "SELECT unit, base_unit FROM units.main.supported_units \
                              WHERE dimension = 'length' ORDER BY unit",
                         ),
+                        // Composed examples: two or more of the worker's objects
+                        // in one query (defined once in `examples.rs`).
+                        examples::PARSED_TOTALS_BY_DIMENSION,
+                        examples::PARSED_TO_BASE_WITH_UNIT,
+                        examples::MILE_IN_EVERY_LENGTH_UNIT,
+                        examples::GUARDED_CONVERT_TO_KG,
+                        examples::STRICT_READING_AND_RISE,
+                        examples::AUDIT_STRICT_AGAINST_CATALOG,
                     ]),
                 ),
             ],

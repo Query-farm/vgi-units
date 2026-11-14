@@ -26,6 +26,7 @@ crates/units-worker/
   src/arrow_io.rs                   VARCHAR/DOUBLE cell reads + STRUCT type + in-process scalar test harness
   src/scalar/{convert,analysis,parse,strict,mod}.rs   thin Arrow scalar adapters
   src/table/{supported,unit_catalog,mod}.rs   thin Arrow table-producer adapters
+  src/examples.rs                   composed example queries (defined once; schema + per-object lists)
   src/unit_catalog_metadata.rs      deterministic `units.catalog_v1` JSON + its SHA-256 (strict scalar tag)
   examples/export_unit_catalog.rs   prints that JSON byte-exactly
   tests/conversions.rs              integration tests against known constants

@@ -55,6 +55,7 @@ impl ScalarFunction for ParseQuantity {
                             "WITH q AS (SELECT units.main.parse_quantity('26.2 mi') AS p) \
                              SELECT units.main.convert((p).value, (p).unit, 'km') AS km FROM q",
                         ),
+                        crate::examples::PARSED_TOTALS_BY_DIMENSION,
                     ]),
                 ));
                 tags

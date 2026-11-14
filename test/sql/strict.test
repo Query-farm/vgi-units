@@ -133,6 +133,24 @@ SELECT count(*) FROM unit_catalog WHERE implementation_version IS NULL OR factor
 ----
 0
 
+# Composed: convert_strict (absolute) + convert_difference_strict (change).
+query TRR
+SELECT sensor, round(units.main.convert_strict(end_c, '°C', '°F'), 2) AS end_f, round(units.main.convert_difference_strict(end_c - start_c, '°C', '°F'), 2) AS rise_f FROM (VALUES ('reactor_a', 20.0, 35.0), ('reactor_b', 18.5, 21.0)) AS t(sensor, start_c, end_c) ORDER BY sensor
+----
+reactor_a	95.0	27.0
+reactor_b	69.8	4.5
+
+# Composed: unit_catalog constants reproduce convert_strict results.
+query TTRR
+SELECT f.unit AS from_unit, t.unit AS to_unit, round(units.main.convert_strict(100, f.unit, t.unit), 6) AS converted, round((100 * f.factor + f."offset" - t."offset") / t.factor, 6) AS recomputed FROM units.main.unit_catalog AS f JOIN units.main.unit_catalog AS t ON t.dimension = f.dimension AND t.unit <> f.unit WHERE f.unit IN ('°C', '°F', 'K') AND t.unit IN ('°C', '°F', 'K') ORDER BY from_unit, to_unit
+----
+K	°C	-173.15	-173.15
+K	°F	-279.67	-279.67
+°C	K	373.15	373.15
+°C	°F	212.0	212.0
+°F	K	310.927778	310.927778
+°F	°C	37.777778	37.777778
+
 statement ok
 USE memory;
 

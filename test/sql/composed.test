@@ -1,0 +1,59 @@
+# name: test/sql/composed.test
+# group: [vgi_units]
+#
+# Composed examples: queries that combine two or more of the worker's objects
+# (published in crates/units-worker/src/examples.rs). Asserts the rows each
+# example's description promises.
+
+require-env VGI_UNITS_WORKER
+
+statement ok
+LOAD vgi;
+
+statement ok
+ATTACH 'units' AS units (TYPE vgi, LOCATION '${VGI_UNITS_WORKER}');
+
+# parse_quantity + dimension + to_base: totals per dimension, unknown unit skipped.
+query TIR
+WITH r AS (SELECT units.main.parse_quantity(txt) AS q FROM (VALUES ('5 km'), ('3 mi'), ('800 m'), ('2 kg'), ('12 lb'), ('7 furlongs')) AS t(txt)) SELECT units.main.dimension((q).unit) AS dim, count(*) AS readings, round(sum(units.main.to_base((q).value, (q).unit)), 4) AS total_si FROM r WHERE q IS NOT NULL GROUP BY dim ORDER BY dim
+----
+length	3	10628.032
+mass	2	7.4431
+
+# parse_quantity + supported_units + to_base: SI value labelled with its base unit.
+query TRT
+WITH r AS (SELECT txt, units.main.parse_quantity(txt) AS q FROM (VALUES ('5 km'), ('2 GiB'), ('1 kWh'), ('98.6 °F')) AS t(txt)) SELECT r.txt, round(units.main.to_base((r.q).value, (r.q).unit), 6) AS base_value, s.base_unit FROM r JOIN units.main.supported_units AS s ON s.unit = (r.q).unit ORDER BY r.txt
+----
+1 kWh	3600000.0	J
+2 GiB	2147483648.0	byte
+5 km	5000.0	m
+98.6 °F	310.15	K
+
+# supported_units + convert: one mile in every length unit.
+query IRR
+SELECT count(*), round(max(one_mile)), round(min(one_mile) * 1e14, 4) FROM (SELECT unit, units.main.convert(1, 'mi', unit) AS one_mile FROM units.main.supported_units WHERE dimension = 'length')
+----
+46	1609344000000.0	5.2155
+
+# compatible guards convert: the incompatible row is NULL, not an error.
+query IR
+SELECT id, round(CASE WHEN units.main.compatible(unit, 'kg') THEN units.main.convert(qty, unit, 'kg') END, 6) AS kg FROM (VALUES (1, 150.0, 'lb'), (2, 2.5, 'kg'), (3, 3.0, 'm'), (4, 16.0, 'oz')) AS t(id, qty, unit) ORDER BY id
+----
+1	68.038856
+2	2.5
+3	NULL
+4	0.453592
+
+# Agent-task graders (vgi-agent-tests.yaml).
+query R
+SELECT round(sum(units.main.convert((q).value, (q).unit, 'km')), 3) AS total_km FROM (SELECT units.main.parse_quantity(leg) AS q FROM (VALUES ('3 mi'), ('5 km'), ('800 m')) AS t(leg))
+----
+10.628
+
+query I
+SELECT count(*) AS n FROM units.main.supported_units WHERE dimension = 'length' AND units.main.convert(1, unit, 'ft') > 1
+----
+23
+
+statement ok
+DETACH units;

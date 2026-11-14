@@ -163,6 +163,7 @@ impl ScalarFunction for ToBase {
                              base.",
                             "SELECT units.main.to_base(1, 'GiB') AS bytes",
                         ),
+                        crate::examples::PARSED_TO_BASE_WITH_UNIT,
                     ]),
                 ));
                 tags

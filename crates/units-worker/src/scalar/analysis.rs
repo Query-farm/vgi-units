@@ -129,10 +129,7 @@ impl ScalarFunction for Compatible {
                             "Check whether two units can be converted between (true).",
                             "SELECT units.main.compatible('mi', 'km') AS ok",
                         ),
-                        (
-                            "Guard a conversion: only convert rows whose units are compatible.",
-                            "SELECT units.main.compatible('kg', 'lb') AS ok",
-                        ),
+                        crate::examples::GUARDED_CONVERT_TO_KG,
                     ]),
                 ));
                 tags

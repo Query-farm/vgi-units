@@ -17,32 +17,37 @@ use crate::units;
 /// self-contained and re-runnable against an attached `units` worker. We omit
 /// `expected_result` deliberately — the linter only needs each query to execute
 /// cleanly, and pinning exact floating-point output would be brittle.
-const EXECUTABLE_EXAMPLES: &str = r#"[
-  {
-    "description": "Convert a marathon distance from miles to kilometres.",
-    "sql": "SELECT units.main.convert(26.2, 'mi', 'km') AS km"
-  },
-  {
-    "description": "Express 1 GiB in bytes via the SI base unit.",
-    "sql": "SELECT units.main.to_base(1, 'GiB') AS bytes"
-  },
-  {
-    "description": "Look up the physical dimension of a unit.",
-    "sql": "SELECT units.main.dimension('kWh') AS dim"
-  },
-  {
-    "description": "Check whether two units can be converted between.",
-    "sql": "SELECT units.main.compatible('mi', 'km') AS ok"
-  },
-  {
-    "description": "Parse a quantity string into a (value, unit) struct.",
-    "sql": "SELECT units.main.parse_quantity('5 km') AS q"
-  },
-  {
-    "description": "Discover the units in the length dimension.",
-    "sql": "SELECT unit, base_unit FROM units.main.supported_units() WHERE dimension = 'length' ORDER BY unit LIMIT 5"
-  }
-]"#;
+fn executable_examples() -> String {
+    crate::meta::example_queries_json(&[
+        (
+            "Convert a marathon distance from miles to kilometres.",
+            "SELECT units.main.convert(26.2, 'mi', 'km') AS km",
+        ),
+        (
+            "Express 1 GiB in bytes via the SI base unit.",
+            "SELECT units.main.to_base(1, 'GiB') AS bytes",
+        ),
+        (
+            "Look up the physical dimension of a unit.",
+            "SELECT units.main.dimension('kWh') AS dim",
+        ),
+        (
+            "Check whether two units can be converted between.",
+            "SELECT units.main.compatible('mi', 'km') AS ok",
+        ),
+        (
+            "Parse a quantity string into a (value, unit) struct.",
+            "SELECT units.main.parse_quantity('5 km') AS q",
+        ),
+        (
+            "Discover the units in the length dimension.",
+            "SELECT unit, base_unit FROM units.main.supported_units() \
+             WHERE dimension = 'length' ORDER BY unit LIMIT 5",
+        ),
+        // Composed (offline + deterministic): supported_units feeding convert.
+        crate::examples::MILE_IN_EVERY_LENGTH_UNIT,
+    ])
+}
 
 pub struct SupportedUnits;
 
@@ -109,7 +114,7 @@ impl TableFunction for SupportedUnits {
 ]"#
             .into(),
         ));
-        tags.push(("vgi.executable_examples".into(), EXECUTABLE_EXAMPLES.into()));
+        tags.push(("vgi.executable_examples".into(), executable_examples()));
         FunctionMetadata {
             description: "List every supported unit with its dimension and SI base unit".into(),
             tags,
