@@ -20,6 +20,9 @@
 //! SELECT to_base(1, 'GiB');                -- 1073741824
 //! SELECT parse_quantity('5 km').*;         -- (5.0, 'km')
 //! SELECT * FROM supported_units();         -- discovery
+//! SELECT convert_strict(0, '°C', '°F');    -- 32 (invalid input → ERROR)
+//! SELECT convert_difference_strict(10, '°C', '°F'); -- 18
+//! SELECT * FROM unit_catalog;              -- factors/offsets + versions
 //! ```
 //!
 //! The pure conversion engine (a curated runtime unit table) lives in `units.rs`;
@@ -29,7 +32,10 @@ mod arrow_io;
 mod meta;
 mod scalar;
 mod table;
+mod unit_catalog_metadata;
 pub mod units;
+
+pub use unit_catalog_metadata::{unit_catalog_json, unit_catalog_sha256};
 
 use vgi::catalog::{CatSchema, CatalogModel};
 use vgi::Worker;
@@ -46,6 +52,10 @@ pub fn version() -> &'static str {
 fn catalog_metadata(name: &str) -> CatalogModel {
     CatalogModel {
         name: name.to_string(),
+        // Function signatures and the curated unit table are compiled into the
+        // worker and cannot change while it serves; a new artifact must be
+        // attached again, so no per-transaction catalog version check is needed.
+        catalog_version_frozen: true,
         comment: Some(
             "Runtime, string-driven physical-unit conversion and dimensional analysis.".to_string(),
         ),
@@ -145,6 +155,26 @@ fn catalog_metadata(name: &str) -> CatalogModel {
                          each other. Return the pairs in this exact order, with columns unit_a, \
                          unit_b, and is_compatible: (mi, km), (kg, lb), (kg, m), (mi, zzz).",
                     ),
+                    (
+                        "strict_marathon_km",
+                        "For a regulated report, convert a 26.2 mile marathon to kilometres with \
+                         the strict conversion that raises an error, rather than returning NULL, \
+                         on any invalid input. Return a single column named km.",
+                    ),
+                    (
+                        "temperature_rise_fahrenheit",
+                        "A reactor's temperature rose by 10 degrees Celsius. Express that \
+                         temperature change (a difference, not an absolute reading) in degrees \
+                         Fahrenheit, using the strict conversion. Return a single column named \
+                         delta_f.",
+                    ),
+                    (
+                        "celsius_definition",
+                        "An auditor wants the exact definition the worker uses for the unit '°C': \
+                         its scale factor and offset relative to the SI base unit, and the \
+                         contract version they belong to. Return one row with columns factor, \
+                         offset, and contract_version.",
+                    ),
                 ]),
             ),
             ("vgi.author".to_string(), "Query.Farm".to_string()),
@@ -177,7 +207,8 @@ fn catalog_metadata(name: &str) -> CatalogModel {
                     "vgi.keywords".to_string(),
                     crate::meta::keywords_json(
                         "units, unit conversion, convert, to_base, dimension, compatible, \
-                         parse_quantity, supported_units, dimensional analysis, measurement",
+                         parse_quantity, supported_units, convert_strict, \
+                         convert_difference_strict, unit_catalog, dimensional analysis, measurement",
                     ),
                 ),
                 // VGI123 classifying tags (bare keys: domain/category/topic) for faceting.
@@ -222,7 +253,7 @@ fn catalog_metadata(name: &str) -> CatalogModel {
   {"name": "Conversion", "description": "Convert and normalize numeric quantities between units of the same physical dimension, including reduction to the SI base unit."},
   {"name": "Analysis", "description": "Inspect units: look up a unit's physical dimension and test whether two units are compatible for conversion."},
   {"name": "Parsing", "description": "Parse free-text quantity strings such as '5 km' into a structured value and unit."},
-  {"name": "Discovery", "description": "Explore the catalog of every recognized unit string, its dimension, and its SI base unit."}
+  {"name": "Discovery", "description": "Explore the catalog of every recognized unit string, its dimension, its SI base unit, and its versioned conversion factor and offset."}
 ]"#
                     .to_string(),
                 ),
@@ -266,7 +297,7 @@ fn catalog_metadata(name: &str) -> CatalogModel {
             // (VGI311) so `SELECT * FROM units.main.supported_units` works
             // without parentheses. `with_function` auto-registers the backing
             // table function, so no separate `table::register` is needed.
-            tables: vec![table::supported_units_table()],
+            tables: vec![table::supported_units_table(), table::unit_catalog_table()],
         }],
         ..Default::default()
     }

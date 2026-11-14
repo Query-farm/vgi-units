@@ -1,6 +1,7 @@
 //! Table functions exposed by the units worker, registered under `units.main`.
 
 mod supported;
+mod unit_catalog;
 
 use std::sync::Arc;
 
@@ -108,6 +109,113 @@ pub fn supported_units_table() -> CatTable {
   {
     "description": "Count how many units exist in each dimension.",
     "sql": "SELECT dimension, count(*) AS n FROM units.main.supported_units GROUP BY dimension ORDER BY n DESC"
+  }
+]"#
+            .to_string(),
+        ),
+    ];
+    t
+}
+
+/// Build the catalog `CatTable` that exposes `unit_catalog` as a regular table
+/// (`SELECT * FROM units.main.unit_catalog`), backed by the
+/// [`unit_catalog::UnitCatalog`] scan function. `unit` is the primary key and
+/// every column is NOT NULL.
+pub fn unit_catalog_table() -> CatTable {
+    let mut t = CatTable::with_function(
+        "unit_catalog",
+        unit_catalog::output_schema(),
+        Arc::new(unit_catalog::UnitCatalog),
+        Some(
+            "Authoritative, versioned unit definitions (factor and offset per exact unit string) \
+             behind the strict conversion functions."
+                .to_string(),
+        ),
+        Some(crate::units::unit_count() as i64),
+    );
+    let columns = [
+        "unit",
+        "dimension",
+        "base_unit",
+        "quantity_space",
+        "factor",
+        "offset",
+        "implementation_version",
+        "contract_version",
+    ];
+    let mut records: Vec<(String, ConstraintKind, &str)> = vec![
+        (
+            "unit_catalog.pk".to_string(),
+            ConstraintKind::PrimaryKey,
+            "unit",
+        ),
+        (
+            "unit_catalog.unit.unique".to_string(),
+            ConstraintKind::Unique,
+            "unit",
+        ),
+    ];
+    records.extend(columns.iter().map(|c| {
+        (
+            format!("unit_catalog.{c}.not_null"),
+            ConstraintKind::NotNull,
+            *c,
+        )
+    }));
+    t.constraints = records
+        .into_iter()
+        .map(|(id, kind, column)| {
+            constraint_record(
+                &ConstraintRecord::new(&["main"], "unit_catalog", &id, kind)
+                    .with_columns(&[&[column]])
+                    .enforced(),
+            )
+            .expect("valid constraint record")
+        })
+        .collect();
+    // Keep the `unit_catalog()` call form callable alongside the bare table.
+    t.expose_scan = true;
+    t.tags = vec![
+        ("vgi.title".to_string(), "Unit Definition Catalog".to_string()),
+        (
+            "vgi.doc_llm".to_string(),
+            "The authoritative unit definitions behind convert_strict and \
+             convert_difference_strict: one row per exact unit string with its dimension, SI base \
+             unit, scale factor and offset (base = value * factor + offset; differences use the \
+             factor only), plus the worker implementation and contract versions. Query it to \
+             audit or approve the exact constants a conversion uses."
+                .to_string(),
+        ),
+        (
+            "vgi.doc_md".to_string(),
+            "# unit_catalog\n\nVersioned, authoritative unit definitions for administrative \
+             approval of strict conversions. One row per exact unit string with `unit`, \
+             `dimension`, `base_unit`, `quantity_space`, `factor`, `offset` (`base = value * factor + offset`; \
+             differences use `factor` only), `implementation_version` and `contract_version`. \
+             Quote the `\"offset\"` column, which is a SQL keyword."
+                .to_string(),
+        ),
+        (
+            "vgi.keywords".to_string(),
+            crate::meta::keywords_json(
+                "unit catalog, unit definitions, conversion factor, offset, version, audit, \
+                 approval, governance, strict conversion",
+            ),
+        ),
+        ("domain".to_string(), "units-and-measurement".to_string()),
+        ("category".to_string(), "discovery".to_string()),
+        ("topic".to_string(), "unit-definitions".to_string()),
+        ("vgi.category".to_string(), "Discovery".to_string()),
+        (
+            "vgi.example_queries".to_string(),
+            r#"[
+  {
+    "description": "Show the factor and offset that define each temperature unit.",
+    "sql": "SELECT unit, factor, \"offset\" FROM units.main.unit_catalog WHERE dimension = 'temperature' ORDER BY unit"
+  },
+  {
+    "description": "Report the worker and contract versions the definitions belong to.",
+    "sql": "SELECT DISTINCT implementation_version, contract_version FROM units.main.unit_catalog"
   }
 ]"#
             .to_string(),

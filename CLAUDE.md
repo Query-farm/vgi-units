@@ -24,8 +24,10 @@ crates/units-worker/
   src/lib.rs                        lib target re-exporting `units` for integration tests
   src/units.rs                      PURE engine (no Arrow): table + convert/to_base/dimension/parse + unit tests
   src/arrow_io.rs                   VARCHAR/DOUBLE cell reads + STRUCT type + in-process scalar test harness
-  src/scalar/{convert,analysis,parse,mod}.rs   thin Arrow scalar adapters
-  src/table/{supported,mod}.rs      thin Arrow table-producer adapter
+  src/scalar/{convert,analysis,parse,strict,mod}.rs   thin Arrow scalar adapters
+  src/table/{supported,unit_catalog,mod}.rs   thin Arrow table-producer adapters
+  src/unit_catalog_metadata.rs      deterministic `units.catalog_v1` JSON + its SHA-256 (strict scalar tag)
+  examples/export_unit_catalog.rs   prints that JSON byte-exactly
   tests/conversions.rs              integration tests against known constants
 test/sql/*.test                     haybarn-unittest sqllogictest — authoritative E2E
 Makefile                            test / test-unit / test-sql / lint / fmt / build / clean
@@ -97,8 +99,14 @@ CI (`.github/workflows/ci.yml`) runs fmt/clippy/build/test plus a gated
 
 ## Function surface
 
-Scalars: `convert` (DOUBLE), `to_base` (DOUBLE), `dimension` (VARCHAR),
-`compatible` (BOOLEAN), `parse_quantity` (STRUCT(value, unit)). Table:
-`supported_units` (unit/dimension/base_unit). The worker version is catalog
+Scalars: `convert` (DOUBLE), `to_base` (DOUBLE), `convert_strict` /
+`convert_difference_strict` (DOUBLE; every invalid input is an ERROR, NULL
+handling SPECIAL so a NULL value still validates its units), `dimension`
+(VARCHAR), `compatible` (BOOLEAN), `parse_quantity` (STRUCT(value, unit)).
+Tables: `supported_units` (unit/dimension/base_unit), `unit_catalog`
+(+ quantity_space/factor/offset/implementation_version/contract_version;
+`offset` is a SQL keyword, quote it). Tag values must stay under vgi-lint's
+4,000-char bound (VGI417), which is why the strict scalars publish only the
+catalog JSON's SHA-256, not the JSON. The worker version is catalog
 metadata (`implementation_version`), not a scalar. 14 dimensions, 300 unit
 strings.

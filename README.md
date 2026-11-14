@@ -31,6 +31,9 @@ SELECT compatible('mi', 'kg');        -- false
 SELECT to_base(1, 'km');              -- 1000.0   (SI base unit of the dimension)
 SELECT (parse_quantity('5 km')).*;    -- (value := 5.0, unit := 'km')
 SELECT * FROM supported_units();      -- discovery: unit, dimension, base_unit
+SELECT convert_strict(0, '°C', '°F'); -- 32.0     (invalid input raises an ERROR)
+SELECT convert_difference_strict(10, '°C', '°F'); -- 18.0 (a temperature change)
+SELECT * FROM unit_catalog;           -- factors, offsets and versions
 ```
 
 ## Quick start
@@ -93,6 +96,8 @@ Scalars (positional-only):
 | --- | --- | --- |
 | `convert` | `convert(value DOUBLE, from VARCHAR, to VARCHAR) -> DOUBLE` | Unknown unit → **NULL**; incompatible dimension (km → kg) → **ERROR** |
 | `to_base` | `to_base(value DOUBLE, unit VARCHAR) -> DOUBLE` | Value in the SI base unit of its dimension; unknown unit → NULL |
+| `convert_strict` | `convert_strict(value DOUBLE, from VARCHAR, to VARCHAR) -> DOUBLE` | Absolute quantities; invalid or NULL units, nonfinite values and overflow → **ERROR** |
+| `convert_difference_strict` | `convert_difference_strict(value DOUBLE, from VARCHAR, to VARCHAR) -> DOUBLE` | Quantity differences; uses scale factors without temperature offsets; same strict validation |
 | `dimension` | `dimension(unit VARCHAR) -> VARCHAR` | `'length'`, `'mass'`, …; NULL if unknown |
 | `compatible` | `compatible(a VARCHAR, b VARCHAR) -> BOOLEAN` | Same dimension? Unknown unit is never compatible |
 | `parse_quantity` | `parse_quantity(text VARCHAR) -> STRUCT(value DOUBLE, unit VARCHAR)` | Parses `"5 km"`, `"3.2kg"`, `"10 m/s"`; NULL if unparseable/unknown |
@@ -106,6 +111,58 @@ Table function:
 | Function | Columns |
 | --- | --- |
 | `supported_units()` | `unit VARCHAR, dimension VARCHAR, base_unit VARCHAR` |
+| `unit_catalog()` | `unit VARCHAR, dimension VARCHAR, base_unit VARCHAR, quantity_space VARCHAR, factor DOUBLE, offset DOUBLE, implementation_version VARCHAR, contract_version VARCHAR` |
+
+Both are also exposed as plain tables (`SELECT * FROM units.main.unit_catalog`).
+`offset` is a SQL keyword, so quote it when selecting it by name: `"offset"`.
+
+### Strict reporting contract (version 1)
+
+The strict functions accept a fixed `DOUBLE, VARCHAR, VARCHAR` input schema.
+They validate both unit strings and compatibility even when the value is NULL.
+A NULL value with valid compatible units produces NULL; missing, unknown or
+incompatible units raise an error. Nonfinite input and nonfinite output,
+including arithmetic overflow, raise an error. Finite negative values are
+allowed. An error aborts the entire batch; no partial successful batch is
+returned.
+
+Absolute temperature conversion includes offsets: 0 °C becomes 32 °F.
+Temperature differences omit offsets: a 10 °C change becomes an 18 °F change.
+The caller must choose the quantity kind correctly. Converting absolute
+temperatures does not make their sum meaningful.
+
+`unit_catalog()` exposes the authoritative engine definitions for administrative
+approval: `base = value * factor + offset`, or `base_difference = value * factor`.
+The result includes implementation and contract versions and has one row per
+exact recognized unit string. Pin the worker artifact as well as its version
+when reproducibility is required. Lookup also trims whitespace and accepts a
+lowercase fallback when exact lookup fails; a governed application may restrict
+inputs to an explicitly approved subset of exact strings.
+
+The same definitions are available as the `units.catalog_v1` JSON document: a
+complete compact JSON object with `version: 1`, `implementation_version`, and
+`units`. Each unit row has `unit`, `dimension`, `base_unit`, `quantity_space`,
+`factor`, and `offset`. Rows are sorted by unit UTF-8 bytes, preserving case-significant
+aliases (`B`/`b`, `MB`/`Mb`). The catalog contains finite positive factors and
+finite offsets and is bounded to 4096 rows and 256 KiB. Its definitions come
+from the existing conversion engine. All temperature units, including
+zero-offset Kelvin and Rankine, belong to an `affine` quantity space; other
+dimensions are `linear`.
+
+Each strict scalar carries `units.implementation_version`,
+`units.contract_version`, `units.quantity_kind` (`absolute` / `difference`) and
+`units.catalog_v1_sha256` tags. The last is the lower-case hex SHA-256 of the
+exact `units.catalog_v1` JSON bytes; the document itself (about 34 KB) is too
+large for a function tag, so a governed host verifies an exported copy against
+the digest without executing `unit_catalog()` or conversion work. Export the
+exact JSON bytes, without a trailing newline, using
+`cargo run -q --example export_unit_catalog`.
+
+Results are IEEE binary64, including when a caller first casts decimal inputs
+to DOUBLE. This is not an exact decimal conversion capability. Acceptance
+examples use absolute tolerance `1e-9 * max(1, abs(expected))`; applications must
+choose an appropriate tolerance for their magnitude and reporting requirements.
+No guarantee of relative accuracy near a cancellation point is implied.
 
 ### NULL-vs-error policy
 

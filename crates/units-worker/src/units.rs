@@ -186,6 +186,24 @@ pub fn convert(value: f64, from: &str, to: &str) -> Result<f64, UnitError> {
     Ok((base - t.offset) / t.factor)
 }
 
+/// Convert a quantity *difference* (an interval, e.g. a 10 °C rise) from `from`
+/// units to `to` units. Affine offsets cancel for differences, so only the scale
+/// factors apply: a 10 °C change is an 18 °F change, not 50 °F. Shares the same
+/// unit definitions and error contract as [`convert`].
+pub fn convert_difference(value: f64, from: &str, to: &str) -> Result<f64, UnitError> {
+    let f = lookup(from).ok_or_else(|| UnitError::UnknownUnit(from.trim().to_string()))?;
+    let t = lookup(to).ok_or_else(|| UnitError::UnknownUnit(to.trim().to_string()))?;
+    if f.dimension != t.dimension {
+        return Err(UnitError::Incompatible {
+            from: from.trim().to_string(),
+            from_dim: f.dimension.name(),
+            to: to.trim().to_string(),
+            to_dim: t.dimension.name(),
+        });
+    }
+    Ok(value * f.factor / t.factor)
+}
+
 /// The value expressed in the SI base unit of its dimension. Unknown unit →
 /// `Err(UnknownUnit)`.
 pub fn to_base(value: f64, unit: &str) -> Result<f64, UnitError> {

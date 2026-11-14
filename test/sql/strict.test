@@ -1,0 +1,140 @@
+# name: test/sql/strict.test
+# group: [vgi_units]
+#
+# Strict conversions — convert_strict(value, from, to) and
+# convert_difference_strict(value, from, to) — and the unit_catalog table.
+# Strict functions raise an ERROR for every invalid input instead of NULL.
+
+require-env VGI_UNITS_WORKER
+
+statement ok
+LOAD vgi;
+
+statement ok
+ATTACH 'units' AS units (TYPE vgi, LOCATION '${VGI_UNITS_WORKER}');
+
+statement ok
+SET search_path = 'units.main';
+
+# Absolute conversion: linear and offset-aware.
+query R
+SELECT ROUND(convert_strict(1, 'mi', 'km'), 6);
+----
+1.609344
+
+query R
+SELECT ROUND(convert_strict(0, '°C', '°F'), 6);
+----
+32.0
+
+query R
+SELECT ROUND(convert_strict(-2, 'kg', 'g'), 6);
+----
+-2000.0
+
+# Decimal literal is cast to the declared DOUBLE argument.
+query R
+SELECT ROUND(convert_strict(26.2, 'mi', 'km'), 6);
+----
+42.16481
+
+# Difference conversion: offsets cancel.
+query R
+SELECT ROUND(convert_difference_strict(10, '°C', '°F'), 6);
+----
+18.0
+
+query R
+SELECT ROUND(convert_difference_strict(-18, 'F', 'K'), 6);
+----
+-10.0
+
+# NULL value with valid compatible units → NULL.
+query I
+SELECT convert_strict(NULL::DOUBLE, 'm', 'km') IS NULL;
+----
+true
+
+query I
+SELECT convert_difference_strict(NULL::DOUBLE, 'C', 'F') IS NULL;
+----
+true
+
+# Column input: order and NULLs preserved.
+query R
+SELECT ROUND(convert_strict(v, u, 'm'), 6)
+FROM (VALUES (1, 1.0, 'km'), (2, NULL, 'cm'), (3, 250.0, 'cm')) t(i, v, u) ORDER BY i;
+----
+1000.0
+NULL
+2.5
+
+# Unknown units → ERROR (even when the value is NULL).
+statement error
+SELECT convert_strict(1, 'frobnicate', 'm');
+----
+Unknown source unit
+
+statement error
+SELECT convert_strict(NULL::DOUBLE, 'm', 'frobnicate');
+----
+Unknown target unit
+
+# NULL unit → ERROR.
+statement error
+SELECT convert_difference_strict(1, NULL, 'm');
+----
+Source unit is NULL
+
+# Incompatible dimensions → ERROR.
+statement error
+SELECT convert_strict(1, 'km', 'kg');
+----
+Incompatible unit dimensions
+
+# Nonfinite input and overflow → ERROR.
+statement error
+SELECT convert_strict('nan'::DOUBLE, 'km', 'm');
+----
+Nonfinite conversion input
+
+statement error
+SELECT convert_difference_strict(1.7976931348623157e308, 'km', 'm');
+----
+Nonfinite conversion result
+
+# unit_catalog: one row per supported unit, every column populated.
+query I
+SELECT (SELECT count(*) FROM unit_catalog) = (SELECT count(*) FROM supported_units);
+----
+true
+
+query TTTTRR
+SELECT unit, dimension, base_unit, quantity_space, factor, "offset" FROM unit_catalog WHERE unit IN ('km', '°C', 'K') ORDER BY unit;
+----
+K	temperature	K	affine	1.0	0.0
+km	length	m	linear	1000.0	0.0
+°C	temperature	K	affine	1.0	273.15
+
+# Case-significant aliases are distinct rows.
+query TR
+SELECT unit, factor FROM unit_catalog() WHERE unit IN ('B', 'b') ORDER BY unit;
+----
+B	1.0
+b	0.125
+
+query T
+SELECT DISTINCT contract_version FROM unit_catalog;
+----
+1
+
+query I
+SELECT count(*) FROM unit_catalog WHERE implementation_version IS NULL OR factor <= 0;
+----
+0
+
+statement ok
+USE memory;
+
+statement ok
+DETACH units;

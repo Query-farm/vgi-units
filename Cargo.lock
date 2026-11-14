@@ -1952,6 +1952,9 @@ dependencies = [
  "arrow-schema",
  "env_logger",
  "log",
+ "serde",
+ "serde_json",
+ "sha2",
  "vgi",
  "vgi-rpc",
 ]
